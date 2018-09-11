@@ -38,7 +38,13 @@ done
 ) || exit 1
 
 
+utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
+utils/utt2spk_to_spk2utt.pl data/dev/utt2spk > data/dev/spk2utt
+utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
 
-
-
+echo "creating test_phone for phone decoding"
+(
+  rm -rf data/test_phone && cp -R data/test data/test_phone  || exit 1
+  cd data/test_phone && rm text &&  cp phone.txt text || exit 1
+)
 
