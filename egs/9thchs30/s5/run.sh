@@ -84,9 +84,27 @@ thchs=/home/speech/aban/t
 # 5. aligning
 
 # 5.1 training a monophone model. the aligned data is in exp/mono
-steps/train_mono.sh --boost-silence 1.25 --nj 40 --cmd "$train_cmd" data/mfcc/train data/lang exp/mono || exit 1;
+# steps/train_mono.sh --boost-silence 1.25 --nj 40 --cmd "$train_cmd" data/mfcc/train data/lang exp/mono || exit 1;
+# steps/align_si.sh --boost-silence 1.25 --nj 40 --cmd "$train_cmd" data/mfcc/train data/lang exp/mono exp/mono_ali || exit 1;
+
+# 5.2 triphone model
+# steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" 2000 10000 data/mfcc/train data/lang exp/mono_ali exp/tri1 || exit 1; 
+# steps/align_si.sh --nj 40 --cmd "$train_cmd" data/mfcc/train data/lang exp/tri1 exp/tri1_ali || exit 1;
+
+# 5.3 lda_mllt
+# steps/train_lda_mllt.sh --cmd "$train_cmd" --splice-opts "--left-context=3 --right-context=3" 2500 15000 data/mfcc/train data/lang exp/tri1_ali exp/tri2b || exit 1;
+# steps/align_si.sh  --nj 40 --cmd "$train_cmd" --use-graphs true data/mfcc/train data/lang exp/tri2b exp/tri2b_ali || exit 1;
+
+# 5.4 sat
+# steps/train_sat.sh --cmd "$train_cmd" 2500 15000 data/mfcc/train data/lang exp/tri2b_ali exp/tri3b || exit 1;
+# steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" data/mfcc/train data/lang exp/tri3b exp/tri3b_ali || exit 1;
+
+# 5.5 quick
+# steps/train_quick.sh --cmd "$train_cmd" 4200 40000 data/mfcc/train data/lang exp/tri3b_ali exp/tri4b || exit 1;
+# steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" data/mfcc/train data/lang exp/tri4b exp/tri4b_ali || exit 1;
 
 
-#n=40
-#local/nnet3/run_tdnn.sh --stage 0 --nj $n exp/tri4b || exit 1;
+
+n=40
+local/nnet3/run_tdnn.sh --stage 0 --nj $n exp/tri5b || exit 1;
 

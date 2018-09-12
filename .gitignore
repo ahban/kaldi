@@ -1,4 +1,6 @@
 *.scp
+*.log
+*.gz
 *.ark
 # Compiled extensionless executable files in /src/*/
 # This stanza must precede wildcard patterns below!
