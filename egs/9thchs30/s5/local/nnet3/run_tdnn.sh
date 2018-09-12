@@ -21,6 +21,7 @@ where "nvcc" is installed.
 EOF
 fi
 
+
 #tdnn training
 
 if [ $stage -le 8 ]; then
@@ -54,3 +55,4 @@ if [ $stage -le 9 ]; then
     )&
 
 fi
+

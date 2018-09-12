@@ -37,30 +37,56 @@ thchs=/home/speech/aban/t
 #  cp data/mfcc/test/feats.scp data/mfcc/test_phone && cp data/mfcc/test/cmvn.scp data/mfcc/test_phone || exit 1;
 
 # 3. language stuff
-#build a large lexicon that invovles words in both the training and decoding.
-(
-  echo "make word graph ..."
-  cd $H; mkdir -p data/{dict,lang,graph} && \
-  cp $thchs/resource/dict/{extra_questions.txt,nonsilence_phones.txt,optional_silence.txt,silence_phones.txt} data/dict && \
-  cat $thchs/resource/dict/lexicon.txt $thchs/data_thchs30/lm_word/lexicon.txt | \
-  grep -v '<s>' | grep -v '</s>' | sort -u > data/dict/lexicon.txt || exit 1;
-  utils/prepare_lang.sh --position_dependent_phones false data/dict "<SPOKEN_NOISE>" data/local/lang data/lang || exit 1;
-  gzip -c $thchs/data_thchs30/lm_word/word.3gram.lm > data/graph/word.3gram.lm.gz || exit 1;
-  utils/format_lm.sh data/lang data/graph/word.3gram.lm.gz $thchs/data_thchs30/lm_word/lexicon.txt data/graph/lang || exit 1;
-)
+#  #build a large lexicon that invovles words in both the training and decoding.
+#  (
+#    echo "make word graph ..."
+#    cd $H; mkdir -p data/{dict,lang,graph} && \
+#    cp $thchs/resource/dict/{extra_questions.txt,nonsilence_phones.txt,optional_silence.txt,silence_phones.txt} data/dict && \
+#    cat $thchs/resource/dict/lexicon.txt $thchs/data_thchs30/lm_word/lexicon.txt | \
+#    grep -v '<s>' | grep -v '</s>' | sort -u > data/dict/lexicon.txt || exit 1;
+#    utils/prepare_lang.sh --position_dependent_phones false data/dict "<SPOKEN_NOISE>" data/local/lang data/lang || exit 1;
+#    gzip -c $thchs/data_thchs30/lm_word/word.3gram.lm > data/graph/word.3gram.lm.gz || exit 1;
+#    utils/format_lm.sh data/lang data/graph/word.3gram.lm.gz $thchs/data_thchs30/lm_word/lexicon.txt data/graph/lang || exit 1;
+#  )
+#  
+#  #make_phone_graph
+#  (
+#    echo "make phone graph ..."
+#    cd $H; mkdir -p data/{dict_phone,graph_phone,lang_phone} && \
+#    cp $thchs/resource/dict/{extra_questions.txt,nonsilence_phones.txt,optional_silence.txt,silence_phones.txt} data/dict_phone  && \
+#    cat $thchs/data_thchs30/lm_phone/lexicon.txt | grep -v '<eps>' | sort -u > data/dict_phone/lexicon.txt  && \
+#    echo "<SPOKEN_NOISE> sil " >> data/dict_phone/lexicon.txt  || exit 1;
+#    utils/prepare_lang.sh --position_dependent_phones false data/dict_phone "<SPOKEN_NOISE>" data/local/lang_phone data/lang_phone || exit 1;
+#    gzip -c $thchs/data_thchs30/lm_phone/phone.3gram.lm > data/graph_phone/phone.3gram.lm.gz  || exit 1;
+#    utils/format_lm.sh data/lang_phone data/graph_phone/phone.3gram.lm.gz $thchs/data_thchs30/lm_phone/lexicon.txt \
+#      data/graph_phone/lang  || exit 1;
+#  )
 
-#make_phone_graph
-(
-  echo "make phone graph ..."
-  cd $H; mkdir -p data/{dict_phone,graph_phone,lang_phone} && \
-  cp $thchs/resource/dict/{extra_questions.txt,nonsilence_phones.txt,optional_silence.txt,silence_phones.txt} data/dict_phone  && \
-  cat $thchs/data_thchs30/lm_phone/lexicon.txt | grep -v '<eps>' | sort -u > data/dict_phone/lexicon.txt  && \
-  echo "<SPOKEN_NOISE> sil " >> data/dict_phone/lexicon.txt  || exit 1;
-  utils/prepare_lang.sh --position_dependent_phones false data/dict_phone "<SPOKEN_NOISE>" data/local/lang_phone data/lang_phone || exit 1;
-  gzip -c $thchs/data_thchs30/lm_phone/phone.3gram.lm > data/graph_phone/phone.3gram.lm.gz  || exit 1;
-  utils/format_lm.sh data/lang_phone data/graph_phone/phone.3gram.lm.gz $thchs/data_thchs30/lm_phone/lexicon.txt \
-    data/graph_phone/lang  || exit 1;
-)
+# 4. generate fbanks for NNET3
+##  n=40
+##  
+##  #if [ $stage -le 0 ]; then
+##    echo "DNN training: stage 0: feature generation"
+##    rm -rf data/fbank fbank && mkdir -p data/fbank &&  cp -R data/{train,dev,test,test_phone} data/fbank || exit 1;
+##    for x in train dev test; do
+##      echo "producing fbank for $x"
+##      #fbank generation
+##      steps/make_fbank.sh --nj $n --cmd "$train_cmd" data/fbank/$x exp/make_fbank/$x fbank/$x || exit 1
+##      #ompute cmvn
+##      steps/compute_cmvn_stats.sh data/fbank/$x exp/fbank_cmvn/$x fbank/$x || exit 1
+##    done
+##  
+##    echo "producing test_fbank_phone"
+##    cp data/fbank/test/feats.scp data/fbank/test_phone && cp data/fbank/test/cmvn.scp data/fbank/test_phone || exit 1;
+##  #fi
 
 
+# 5. aligning
+
+# 5.1 training a monophone model. the aligned data is in exp/mono
+steps/train_mono.sh --boost-silence 1.25 --nj 40 --cmd "$train_cmd" data/mfcc/train data/lang exp/mono || exit 1;
+
+
+#n=40
+#local/nnet3/run_tdnn.sh --stage 0 --nj $n exp/tri4b || exit 1;
 
