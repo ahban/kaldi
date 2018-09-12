@@ -4,27 +4,63 @@
 
 H=`pwd`  #exp home
 
+#corpus and trans directory
 thchs=/home/speech/aban/t
 
 . cmd.sh
 . path.sh
 
 # 1. prepare data
-##  
-##  #corpus and trans directory
-##  
-##  # generate standart files for Kaldi
-##  local/data_pre.sh $H $thchs/data_thchs30 || exit 1;
+#
+#
+# generate standart files for Kaldi
+#  local/data_pre.sh $H $thchs/data_thchs30 || exit 1;
 
 
 # 2. compute features
-rm -rf data/mfcc && mkdir -p data/mfcc &&  cp -R data/{train,dev,test,test_phone} data/mfcc || exit 1;
+#    output: data/mfcc/train/feats.scp
+#            data/mfcc/train/cmvn.scp
+#            all the features stored into mfcc/{train,dev,test}
 
-n=10
-for x in train dev test; do
-   #make mfcc
-   steps/make_mfcc.sh --nj $n --cmd "$train_cmd" data/mfcc/$x exp/make_mfcc/$x mfcc/$x || exit 1;
-   #compute cmvn
-   steps/compute_cmvn_stats.sh data/mfcc/$x exp/mfcc_cmvn/$x mfcc/$x || exit 1;
-done
+#  n=10 
+#  rm -rf data/mfcc && mkdir -p data/mfcc &&  cp -R data/{train,dev,test,test_phone} data/mfcc || exit 1;
+#  for x in train dev test; do
+#     #make mfcc
+#     #make_mfcc.sh      [options]                  <data-dir>   <log-dir>         <mfcc-dir>
+#     steps/make_mfcc.sh --nj $n --cmd "$train_cmd" data/mfcc/$x exp/make_mfcc/$x  mfcc/$x     || exit 1;
+#  
+#     #compute cmvn
+#     #steps/compute_cmvn_stats.sh [options] <data-dir>    <log-dir>         <cmvn-dir> 
+#     steps/compute_cmvn_stats.sh            data/mfcc/$x  exp/mfcc_cmvn/$x  mfcc/$x    || exit 1;
+#  done
+#  #copy feats.scp and cmvn.scp in mfcc/test direcroty into test_phone direcroty
+#  cp data/mfcc/test/feats.scp data/mfcc/test_phone && cp data/mfcc/test/cmvn.scp data/mfcc/test_phone || exit 1;
+
+# 3. language stuff
+#build a large lexicon that invovles words in both the training and decoding.
+(
+  echo "make word graph ..."
+  cd $H; mkdir -p data/{dict,lang,graph} && \
+  cp $thchs/resource/dict/{extra_questions.txt,nonsilence_phones.txt,optional_silence.txt,silence_phones.txt} data/dict && \
+  cat $thchs/resource/dict/lexicon.txt $thchs/data_thchs30/lm_word/lexicon.txt | \
+  grep -v '<s>' | grep -v '</s>' | sort -u > data/dict/lexicon.txt || exit 1;
+  utils/prepare_lang.sh --position_dependent_phones false data/dict "<SPOKEN_NOISE>" data/local/lang data/lang || exit 1;
+  gzip -c $thchs/data_thchs30/lm_word/word.3gram.lm > data/graph/word.3gram.lm.gz || exit 1;
+  utils/format_lm.sh data/lang data/graph/word.3gram.lm.gz $thchs/data_thchs30/lm_word/lexicon.txt data/graph/lang || exit 1;
+)
+
+#make_phone_graph
+(
+  echo "make phone graph ..."
+  cd $H; mkdir -p data/{dict_phone,graph_phone,lang_phone} && \
+  cp $thchs/resource/dict/{extra_questions.txt,nonsilence_phones.txt,optional_silence.txt,silence_phones.txt} data/dict_phone  && \
+  cat $thchs/data_thchs30/lm_phone/lexicon.txt | grep -v '<eps>' | sort -u > data/dict_phone/lexicon.txt  && \
+  echo "<SPOKEN_NOISE> sil " >> data/dict_phone/lexicon.txt  || exit 1;
+  utils/prepare_lang.sh --position_dependent_phones false data/dict_phone "<SPOKEN_NOISE>" data/local/lang_phone data/lang_phone || exit 1;
+  gzip -c $thchs/data_thchs30/lm_phone/phone.3gram.lm > data/graph_phone/phone.3gram.lm.gz  || exit 1;
+  utils/format_lm.sh data/lang_phone data/graph_phone/phone.3gram.lm.gz $thchs/data_thchs30/lm_phone/lexicon.txt \
+    data/graph_phone/lang  || exit 1;
+)
+
+
 
