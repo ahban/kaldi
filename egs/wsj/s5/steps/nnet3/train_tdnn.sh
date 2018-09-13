@@ -232,9 +232,9 @@ context_opts="--left-context=$left_context --right-context=$right_context"
 if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts=()
   [ ! -z "$cmvn_opts" ] && extra_opts+=(--cmvn-opts "$cmvn_opts")
-  [ ! -z "$feat_type" ] && extra_opts+=(--feat-type $feat_type)
+  #[ ! -z "$feat_type" ] && extra_opts+=(--feat-type $feat_type)
   [ ! -z "$online_ivector_dir" ] && extra_opts+=(--online-ivector-dir $online_ivector_dir)
-  extra_opts+=(--transform-dir $transform_dir)
+ # extra_opts+=(--transform-dir $transform_dir)
   extra_opts+=(--left-context $left_context)
   extra_opts+=(--right-context $right_context)
   echo "$0: calling get_egs.sh"

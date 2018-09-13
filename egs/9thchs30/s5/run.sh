@@ -102,9 +102,11 @@ thchs=/home/speech/aban/t
 # 5.5 quick
 # steps/train_quick.sh --cmd "$train_cmd" 4200 40000 data/mfcc/train data/lang exp/tri3b_ali exp/tri4b || exit 1;
 # steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" data/mfcc/train data/lang exp/tri4b exp/tri4b_ali || exit 1;
+# please decoding ... 
+local/thchs-30_decode.sh --nj 10 "steps/decode_fmllr.sh" exp/tri4b data/mfcc 
 
 
 
-n=40
-local/nnet3/run_tdnn.sh --stage 0 --nj $n exp/tri5b || exit 1;
+#n=8
+#local/nnet3/run_tdnn.sh --stage 0 --nj $n exp/tri5b || exit 1;
 
