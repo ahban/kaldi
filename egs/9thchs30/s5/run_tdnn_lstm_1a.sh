@@ -104,7 +104,7 @@ fi
 gmm_dir=exp/tri4b
 ali_dir=exp/tri4b_ali
 lang=data/lang
-dir=exp/nnet3_lstm_1_a
+dir=exp/nnet3_lstm_1a
 # fbank
 train_data_dir=data/fbank/train
 

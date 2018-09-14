@@ -104,9 +104,10 @@ fi
 gmm_dir=exp/tri4b
 ali_dir=exp/tri4b_ali
 lang=data/lang
-dir=exp/nnet3_lstm_1_a
+dir=exp/nnet3_lstm_3a
 # fbank
 train_data_dir=data/fbank/train
+
 
 if [ $stage -le 12 ]; then
   mkdir -p $dir
@@ -124,17 +125,17 @@ if [ $stage -le 12 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2) affine-transform-file=$dir/configs/lda.mat delay=3
 
   # the first splicing is moved before the lda layer, so no splicing here
-  # relu-renorm-layer name=tdnn1 dim=520
-  # relu-renorm-layer name=tdnn2 dim=520 input=Append(-1,0,1)
+  relu-renorm-layer name=tdnn1 dim=520
+  relu-renorm-layer name=tdnn2 dim=520 input=Append(-1,0,1)
   fast-lstmp-layer name=lstm1 cell-dim=520 recurrent-projection-dim=130 non-recurrent-projection-dim=130 decay-time=20 delay=-3
-  # relu-renorm-layer name=tdnn3 dim=520 input=Append(-3,0,3)
-  # relu-renorm-layer name=tdnn4 dim=520 input=Append(-3,0,3)
-  # fast-lstmp-layer name=lstm2 cell-dim=520 recurrent-projection-dim=130 non-recurrent-projection-dim=130 decay-time=20 delay=-3
-  # relu-renorm-layer name=tdnn5 dim=520 input=Append(-3,0,3)
-  # relu-renorm-layer name=tdnn6 dim=520 input=Append(-3,0,3)
-  # fast-lstmp-layer name=lstm3 cell-dim=520 recurrent-projection-dim=130 non-recurrent-projection-dim=130 decay-time=20 delay=-3
+  relu-renorm-layer name=tdnn3 dim=520 input=Append(-3,0,3)
+  relu-renorm-layer name=tdnn4 dim=520 input=Append(-3,0,3)
+  fast-lstmp-layer name=lstm2 cell-dim=520 recurrent-projection-dim=130 non-recurrent-projection-dim=130 decay-time=20 delay=-3
+  relu-renorm-layer name=tdnn5 dim=520 input=Append(-3,0,3)
+  relu-renorm-layer name=tdnn6 dim=520 input=Append(-3,0,3)
+  fast-lstmp-layer name=lstm3 cell-dim=520 recurrent-projection-dim=130 non-recurrent-projection-dim=130 decay-time=20 delay=-3
 
-  output-layer name=output input=lstm1 output-delay=$label_delay dim=$num_targets max-change=1.5
+  output-layer name=output input=lstm3 output-delay=$label_delay dim=$num_targets max-change=1.5
 
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -157,7 +158,7 @@ if [ $stage -le 13 ]; then
     --trainer.deriv-truncate-margin=10 \
     --trainer.samples-per-iter=20000 \
     --trainer.optimization.num-jobs-initial=1 \
-    --trainer.optimization.num-jobs-final=4 \
+    --trainer.optimization.num-jobs-final=2 \
     --trainer.optimization.initial-effective-lrate=0.0003 \
     --trainer.optimization.final-effective-lrate=0.00003 \
     --trainer.optimization.shrink-value 0.99 \
@@ -188,6 +189,7 @@ echo "##########################################################################
 if [ $stage -le 14 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   rm $dir/.error 2>/dev/null || true
+
     (
         graph_dir=$gmm_dir/graph_word
         steps/nnet3/decode.sh \
@@ -198,7 +200,7 @@ if [ $stage -le 14 ]; then
           --frames-per-chunk 50 \
           --nj 1 --cmd "$decode_cmd"  --num-threads 40 \
           $graph_dir data/fbank/test ${dir}/decode_test || exit 1
-    ) || touch $dir/.error 
+    ) || touch $dir/.error &
   wait
   [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 fi
