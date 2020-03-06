@@ -9,7 +9,7 @@
 set -e -o pipefail
 
 # configs for 'chain'
-stage=4
+stage=7
 train_stage=-10
 nj=8
 
@@ -27,6 +27,9 @@ frames_per_eg=150
 remove_egs=false
 common_egs_dir=
 xent_regularize=0.1
+
+srand=0
+chunk_width=140,100,160
 # End configuration section.
 
 
@@ -115,7 +118,7 @@ if [ $stage -le 4 ]; then
     mkdir -p $dir/configs
     cat <<EOF > $dir/configs/network.xconfig
 
-    input dim=50 name=input
+    input dim=13 name=input
 
     fixed-affine-layer name=lda input=Append(-2,-1,0,1,2) affine-transform-file=$dir/configs/lda.mat
 
@@ -147,4 +150,103 @@ EOF
 fi
 
 
+online_cmvn=false
+if [ $stage -le 5 ]; then
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
+    utils/create_split_dir.pl \
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+  fi
+
+  steps/nnet3/chain/train.py --stage=-2 \
+    --cmd="$decode_cmd" \
+    --feat.online-ivector-dir=$train_ivector_dir \
+    --feat.cmvn-opts="--norm-means=true --norm-vars=true" \
+    --chain.xent-regularize $xent_regularize \
+    --chain.leaky-hmm-coefficient=0.1 \
+    --chain.l2-regularize=0.0 \
+    --chain.apply-deriv-weights=false \
+    --chain.lm-opts="--num-extra-lm-states=2000" \
+    --trainer.add-option="--optimization.memory-compression-level=2" \
+    --trainer.srand=$srand \
+    --trainer.max-param-change=2.0 \
+    --trainer.num-epochs=10 \
+    --trainer.frames-per-iter=2000000 \
+    --trainer.optimization.num-jobs-initial=4 \
+    --trainer.optimization.num-jobs-final=4 \
+    --trainer.optimization.initial-effective-lrate=0.0005 \
+    --trainer.optimization.final-effective-lrate=0.00005 \
+    --trainer.num-chunk-per-minibatch=128,64 \
+    --trainer.optimization.momentum=0.0 \
+    --egs.chunk-width=$chunk_width \
+    --egs.chunk-left-context=0 \
+    --egs.chunk-right-context=0 \
+    --egs.dir="$common_egs_dir" \
+    --egs.opts="--frames-overlap-per-eg 0 --online-cmvn $online_cmvn" \
+    --cleanup.remove-egs=$remove_egs \
+    --use-gpu=true \
+    --reporting.email="$reporting_email" \
+    --feat-dir=$data_dir \
+    --tree-dir=$tree_dir \
+    --lat-dir=$lat_dir \
+    --dir=$dir  || exit 1;
+fi
+
+if [ $stage -le 6 ]; then
+  # The reason we are using data/lang here, instead of $lang, is just to
+  # emphasize that it's not actually important to give mkgraph.sh the
+  # lang directory with the matched topology (since it gets the
+  # topology file from the model).  So you could give it a different
+  # lang directory, one that contained a wordlist and LM of your choice,
+  # as long as phones.txt was compatible.
+
+  #utils/lang/check_phones_compatible.sh \
+  #  data/lang_test_tgpr/phones.txt $lang/phones.txt
+  #utils/mkgraph.sh \
+  #  --self-loop-scale 1.0 data/lang_test_tgpr \
+  #  $tree_dir $tree_dir/graph_tgpr || exit 1;
+
+  #utils/lang/check_phones_compatible.sh \
+  #  data/lang_test_bd_tgpr/phones.txt $lang/phones.txt
+  #utils/mkgraph.sh \
+  #  --self-loop-scale 1.0 data/lang_test_bd_tgpr \
+  #  $tree_dir $tree_dir/graph_bd_tgpr || exit 1;
+ 
+  utils/mkgraph.sh \
+      --self-loop-scale 1.0 \
+      data/graph/lang \
+      $tree_dir $tree_dir/graph || exit 1;
+
+  utils/mkgraph.sh \
+      --self-loop-scale 1.0 \
+      data/graph_phone/lang \
+      $tree_dir $tree_dir/graph_phone || exit 1;
+fi
+
+if [ $stage -le 7 ]; then
+    frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
+    nspk=$(wc -l <data/mfcc/test/spk2utt)
+    steps/nnet3/decode.sh \
+        --acwt 1.0 --post-decode-acwt 10.0 \
+        --extra-left-context 0 --extra-right-context 0 \
+        --extra-left-context-initial 0 \
+        --extra-right-context-final 0 \
+        --frames-per-chunk $frames_per_chunk \
+        --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
+        --online-ivector-dir "" \
+        $tree_dir/graph data/mfcc/test ${dir}/decode_lang || exit 1
+fi
+
+if [ $stage -le 8 ]; then
+    frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
+    nspk=$(wc -l <data/mfcc/test/spk2utt)
+    steps/nnet3/decode.sh \
+        --acwt 1.0 --post-decode-acwt 10.0 \
+        --extra-left-context 0 --extra-right-context 0 \
+        --extra-left-context-initial 0 \
+        --extra-right-context-final 0 \
+        --frames-per-chunk $frames_per_chunk \
+        --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
+        --online-ivector-dir "" \
+        $tree_dir/graph_phone data/mfcc/test_phone ${dir}/decode_phone || exit 1
+fi
 
