@@ -177,7 +177,10 @@ fi
 
 
 if [ $stage -le 14 ]; then
-    # run tdnn 
+    steps/align_fmllr.sh \
+        --nj $n --cmd "$train_cmd" \
+        data/mfcc/train data/lang \
+        exp/tri7b exp/tri7b_ali || exit 1;
 fi
 
 

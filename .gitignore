@@ -2,6 +2,7 @@
 *.mdl
 tree
 cmvn_opts
+**/trash/*
 
 # Created by https://www.gitignore.io/api/vim,python,visualstudiocode
 # Edit at https://www.gitignore.io/?templates=vim,python,visualstudiocode
