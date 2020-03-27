@@ -34,16 +34,20 @@ DenominatorComputation::DenominatorComputation(
     den_graph_(den_graph),
     num_sequences_(num_sequences),
     frames_per_sequence_(nnet_output.NumRows() / num_sequences_),
+
     nnet_output_deriv_transposed_(
         nnet_output.NumCols(),
         std::min<int32>(nnet_output.NumRows(),
                         static_cast<int32>(kMaxDerivTimeSteps) *
                         num_sequences_)),
+
     alpha_(frames_per_sequence_ + 1,
            den_graph_.NumStates() * num_sequences_ + num_sequences_,
            kUndefined),
+
     beta_(2, den_graph_.NumStates() * num_sequences_ + num_sequences_,
           kUndefined),
+          
     tot_prob_(num_sequences_, kUndefined),
     tot_log_prob_(num_sequences_, kUndefined),
     log_correction_term_(num_sequences_, kUndefined),
@@ -112,12 +116,14 @@ void DenominatorComputation::AlphaGeneralFrame(int32 t) {
   KALDI_ASSERT(t > 0 && t <= frames_per_sequence_);
   BaseFloat *this_alpha = alpha_.RowData(t);
   const BaseFloat *prev_alpha_dash = alpha_.RowData(t - 1);
-  const Int32Pair *backward_transitions = den_graph_.BackwardTransitions();
-  const DenominatorGraphTransition *transitions = den_graph_.Transitions();
+  const Int32Pair *backward_transitions = den_graph_.BackwardTransitions(); // from which others to me?
+  const DenominatorGraphTransition *transitions = den_graph_.Transitions(); // the true transitions
+  // 
   int32 num_pdfs = exp_nnet_output_transposed_.NumRows(),
       num_hmm_states = den_graph_.NumStates(),
       num_sequences = num_sequences_;
 
+  // exp_nnet_output_transposed_ 
   // 'probs' is the matrix of pseudo-likelihoods for frame t - 1.
   CuSubMatrix<BaseFloat> probs(exp_nnet_output_transposed_, 0, num_pdfs,
                                (t-1) * num_sequences_, num_sequences_);
@@ -158,15 +164,20 @@ void DenominatorComputation::AlphaGeneralFrame(int32 t) {
     for (int32 h = 0; h < num_hmm_states; h++) {
       for (int32 s = 0; s < num_sequences; s++) {
         double this_tot_alpha = 0.0;
-        const DenominatorGraphTransition
-            *trans_iter = transitions + backward_transitions[h].first,
-            *trans_end = transitions + backward_transitions[h].second;
+
+        const DenominatorGraphTransition *trans_iter = transitions + backward_transitions[h].first;
+        const DenominatorGraphTransition * trans_end = transitions + backward_transitions[h].second;
+
+        // for all transition to current hmm state h
         for (; trans_iter != trans_end; ++trans_iter) {
+          // get transition prob
           BaseFloat transition_prob = trans_iter->transition_prob;
-          int32 pdf_id = trans_iter->pdf_id,
-              prev_hmm_state = trans_iter->hmm_state;
-          BaseFloat prob = prob_data[pdf_id * prob_stride + s],
-              this_prev_alpha = prev_alpha_dash[prev_hmm_state * num_sequences + s];
+          int32              pdf_id = trans_iter->pdf_id;
+          int32      prev_hmm_state = trans_iter->hmm_state;
+
+          // get nnet output prob
+          BaseFloat            prob = prob_data[pdf_id * prob_stride + s];
+          BaseFloat this_prev_alpha = prev_alpha_dash[prev_hmm_state * num_sequences + s];
           this_tot_alpha += this_prev_alpha * transition_prob * prob;
         }
         // Let arbitrary_scale be the inverse of the alpha-sum value that we
@@ -201,7 +212,8 @@ void DenominatorComputation::AlphaDash(int32 t) {
   CuSubVector<BaseFloat> alpha_sum_vec(this_alpha +
                                        den_graph_.NumStates() * num_sequences_,
                                        num_sequences_);
-  alpha_sum_vec.AddRowSumMat(1.0, alpha_mat, 0.0);
+
+  alpha_sum_vec.AddRowSumMat(1.0, alpha_mat, 0.0); // reduce on columns
 
   alpha_mat.AddVecVec(opts_.leaky_hmm_coefficient,
                       den_graph_.InitialProbs(),

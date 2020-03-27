@@ -121,11 +121,11 @@ class DenominatorGraph {
   // forward_transitions_ is an array, indexed by hmm-state index,
   // of start and end indexes into the transition_ array, which
   // give us the set of transitions out of this state.
-  CuArray<Int32Pair> forward_transitions_;
+  CuArray<Int32Pair> forward_transitions_; // 0 ... num_states-1; transitions from this state s to others
   // backward_transitions_ is an array, indexed by hmm-state index,
   // of start and end indexes into the transition_ array, which
   // give us the set of transitions out of this state.
-  CuArray<Int32Pair> backward_transitions_;
+  CuArray<Int32Pair> backward_transitions_; // 0 ... num_states-1; transitions from others to this state s.
   // This stores the actual transitions.
   CuArray<DenominatorGraphTransition> transitions_;
 

@@ -284,7 +284,7 @@ class DenominatorComputation {
   CuMatrix<BaseFloat> alpha_;
 
   // the beta (also beta-dash) probabilities (rolling buffer); dimension is 2 *
-  // (num-hmm-states * num-sequences + num_sequences).  [the last
+  // (num-hmm-states * num_sequences + num_sequences).  [the last
   // 'num_sequences' columns are for the beta-sums, which relates to leaky HMM.]
   // Note: for efficiency and to simplify the equations, these are actually the
   // beta / tot_prob_.
