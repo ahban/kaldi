@@ -209,11 +209,10 @@ void DenominatorComputation::AlphaDash(int32 t) {
                                    num_sequences_);
 
   // the alpha-dash is the sum of alpha over all states.
-  CuSubVector<BaseFloat> alpha_sum_vec(this_alpha +
-                                       den_graph_.NumStates() * num_sequences_,
-                                       num_sequences_);
+  CuSubVector<BaseFloat> alpha_sum_vec(this_alpha + den_graph_.NumStates() * num_sequences_,
+                                           num_sequences_);
 
-  alpha_sum_vec.AddRowSumMat(1.0, alpha_mat, 0.0); // reduce on columns
+  alpha_sum_vec.AddRowSumMat(1.0, alpha_mat, 0.0); // reduce on columns, on column has num states elements, num_sequence cols total.
 
   alpha_mat.AddVecVec(opts_.leaky_hmm_coefficient,
                       den_graph_.InitialProbs(),
