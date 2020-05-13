@@ -904,10 +904,11 @@ static void _trace_mat_mat(const Real* A, const Real* B, MatrixDim dA,
   const int32_cuda tid = threadIdx.y * blockDim.x + threadIdx.x;
   const int32_cuda grid_height = gridDim.y * TileDim;
 
-  const int32_cuda ja = blockIdx.x * TileDim + threadIdx.x;
+  int32_cuda       ia = blockIdx.y * TileDim + threadIdx.y; // ban row
+  const int32_cuda ja = blockIdx.x * TileDim + threadIdx.x; // ban col
+
   const int32_cuda ib = blockIdx.x * TileDim + threadIdx.y;
-  int32_cuda ia = blockIdx.y * TileDim + threadIdx.y;
-  int32_cuda jb = blockIdx.y * TileDim + threadIdx.x;
+  int32_cuda       jb = blockIdx.y * TileDim + threadIdx.x;
 
   // Grid reduce
   Real tsum = Real(0);
