@@ -199,16 +199,15 @@ static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
   // s is the index of the sequence within the minibatch,
   // from 0 .. num-egs-in-this-minibatch - 1.
   // h is the hmm-state index.
-  int32_cuda s = threadIdx.x + blockIdx.x * blockDim.x,
-      h = blockIdx.y;
+  int32_cuda s = threadIdx.x + blockIdx.x * blockDim.x;
+  int32_cuda h = blockIdx.y;
   if (s >= num_sequences)
     return;
 
   // See where arbitrary_scale is defined in the forward computation above, for
   // more explanation of inv_arbitrary_scale.
-  BaseFloat this_alpha_prob = this_alpha[h * num_sequences + s],
-      inv_arbitrary_scale =
-      this_alpha[num_hmm_states * num_sequences + s];
+  BaseFloat this_alpha_prob     = this_alpha[h * num_sequences + s];
+  BaseFloat inv_arbitrary_scale = this_alpha[num_hmm_states * num_sequences + s];
   double tot_variable_factor = 0.0;
 
   BaseFloat occupation_factor = this_alpha_prob / inv_arbitrary_scale;
@@ -219,34 +218,32 @@ static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
                               // below.
   for (; trans_iter + loop_unroll <= trans_end; trans_iter += loop_unroll) {
     BaseFloat transition_prob0 = trans_iter[0].transition_prob;
-    int32_cuda pdf_id0 = trans_iter[0].pdf_id,
-        next_hmm_state0 = trans_iter[0].hmm_state;
+    int32_cuda         pdf_id0 = trans_iter[0].pdf_id;
+    int32_cuda next_hmm_state0 = trans_iter[0].hmm_state;
+
     BaseFloat transition_prob1 = trans_iter[1].transition_prob;
-    int32_cuda pdf_id1 = trans_iter[1].pdf_id,
-        next_hmm_state1 = trans_iter[1].hmm_state;
-    BaseFloat variable_factor0 = transition_prob0 *
-        next_beta[next_hmm_state0 * num_sequences + s] *
-                    probs[pdf_id0 * prob_stride + s],
-         variable_factor1 = transition_prob1 *
-        next_beta[next_hmm_state1 * num_sequences + s] *
-                    probs[pdf_id1 * prob_stride + s];
-    tot_variable_factor += variable_factor0 + variable_factor1;
+    int32_cuda         pdf_id1 = trans_iter[1].pdf_id;
+    int32_cuda next_hmm_state1 = trans_iter[1].hmm_state;
+
+    BaseFloat variable_factor0 = transition_prob0 * next_beta[next_hmm_state0 * num_sequences + s] * probs[pdf_id0 * prob_stride + s];
+    BaseFloat variable_factor1 = transition_prob1 * next_beta[next_hmm_state1 * num_sequences + s] * probs[pdf_id1 * prob_stride + s];
+    tot_variable_factor  += variable_factor0 + variable_factor1;
+
     BaseFloat occupation_prob0 = variable_factor0 * occupation_factor;
-    atomic_add_thresholded(log_prob_deriv + (pdf_id0 * log_prob_deriv_stride + s),
-                           occupation_prob0);
+    atomic_add_thresholded(log_prob_deriv + (pdf_id0 * log_prob_deriv_stride + s), occupation_prob0);
     BaseFloat occupation_prob1 = variable_factor1 * occupation_factor;
-    atomic_add_thresholded(log_prob_deriv + (pdf_id1 * log_prob_deriv_stride + s),
-                           occupation_prob1);
+    atomic_add_thresholded(log_prob_deriv + (pdf_id1 * log_prob_deriv_stride + s), occupation_prob1);
   }
   if (trans_iter != trans_end) {
     // mop up the odd transition.
     BaseFloat transition_prob0 = trans_iter[0].transition_prob;
-    int32_cuda pdf_id0 = trans_iter[0].pdf_id,
-        next_hmm_state0 = trans_iter[0].hmm_state;
-    BaseFloat variable_factor0 = transition_prob0 *
-        next_beta[next_hmm_state0 * num_sequences + s] *
-                      probs[pdf_id0 * prob_stride + s];
+    int32_cuda         pdf_id0 = trans_iter[0].pdf_id;
+    int32_cuda next_hmm_state0 = trans_iter[0].hmm_state;
+
+    BaseFloat variable_factor0 = transition_prob0 * next_beta[next_hmm_state0 * num_sequences + s] * probs[pdf_id0 * prob_stride + s];
+
     tot_variable_factor += variable_factor0;
+    
     BaseFloat occupation_prob0 = variable_factor0 * occupation_factor;
     atomic_add_thresholded(log_prob_deriv + (pdf_id0 * log_prob_deriv_stride + s),
                            occupation_prob0);

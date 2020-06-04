@@ -177,6 +177,7 @@ void DenominatorComputation::AlphaGeneralFrame(int32 t) {
 
           // get nnet output prob
           BaseFloat            prob = prob_data[pdf_id * prob_stride + s];
+
           BaseFloat this_prev_alpha = prev_alpha_dash[prev_hmm_state * num_sequences + s];
           this_tot_alpha += this_prev_alpha * transition_prob * prob;
         }
@@ -188,10 +189,10 @@ void DenominatorComputation::AlphaGeneralFrame(int32 t) {
         // a good numeric range.  This won't affect the posteriors, but when
         // computing the total likelihood we'll need to compensate for it later
         // on.
-        BaseFloat arbitrary_scale =
-            1.0 / prev_alpha_dash[num_hmm_states * num_sequences + s];
+        BaseFloat arbitrary_scale = 1.0 / prev_alpha_dash[num_hmm_states * num_sequences + s];
         KALDI_ASSERT(this_tot_alpha - this_tot_alpha == 0);
         this_alpha[h * num_sequences + s] = this_tot_alpha * arbitrary_scale;
+
       }
     }
   }
@@ -203,18 +204,20 @@ void DenominatorComputation::AlphaDash(int32 t) {
 
   // create a 'fake matrix' for the regular alphas- view this row as a matrix.
   // initializer takes [pointer, num-rows, num-cols, stride].
+  // ban : alpha_mat is "num_states x minibatch_size"  
   CuSubMatrix<BaseFloat> alpha_mat(this_alpha,
                                    den_graph_.NumStates(),
                                    num_sequences_,
                                    num_sequences_);
 
   // the alpha-dash is the sum of alpha over all states.
-  CuSubVector<BaseFloat> alpha_sum_vec(this_alpha +
-                                       den_graph_.NumStates() * num_sequences_,
-                                       num_sequences_);
+  CuSubVector<BaseFloat> alpha_sum_vec(this_alpha + den_graph_.NumStates() * num_sequences_,
+                                           num_sequences_);
 
-  alpha_sum_vec.AddRowSumMat(1.0, alpha_mat, 0.0); // reduce on columns
+  // ban : reduce on columns, on column has num states elements, num_sequence cols total.
+  alpha_sum_vec.AddRowSumMat(1.0, alpha_mat, 0.0); 
 
+  // ban : 
   alpha_mat.AddVecVec(opts_.leaky_hmm_coefficient,
                       den_graph_.InitialProbs(),
                       alpha_sum_vec);
@@ -309,9 +312,9 @@ bool DenominatorComputation::Backward(
     if (t % kMaxDerivTimeSteps == 0) {
       // commit the derivative stored in nnet_output_deriv_transposed_ by adding
       // its transpose to the appropriate sub-matrix of 'nnet_output_deriv'.
-      int32 chunk_frames = std::min<int32>(static_cast<int32>(kMaxDerivTimeSteps),
-                                           frames_per_sequence_ - t),
-                num_pdfs = exp_nnet_output_transposed_.NumRows();
+      int32 chunk_frames = std::min<int32>(static_cast<int32>(kMaxDerivTimeSteps), frames_per_sequence_ - t),
+      int32     num_pdfs = exp_nnet_output_transposed_.NumRows();
+
       CuSubMatrix<BaseFloat> transposed_deriv_part(
           nnet_output_deriv_transposed_,
           0, num_pdfs,
@@ -352,25 +355,28 @@ void DenominatorComputation::BetaDashLastFrame() {
 void DenominatorComputation::BetaDashGeneralFrame(int32 t) {
   NVTX_RANGE(__func__);
   KALDI_ASSERT(t >= 0 && t < frames_per_sequence_);
+
   int32 num_pdfs = exp_nnet_output_transposed_.NumRows();
+
   // t_wrapped gives us the time-index we use when indexing
   // nnet_output_deriv_transposed_; to save memory we limit the size of the
   // matrix, storing only chunks of frames at a time, and we add it to the
   // non-transposed output whenever we finish a chunk.
   int32 t_wrapped = t % static_cast<int32>(kMaxDerivTimeSteps);
-  const BaseFloat *this_alpha_dash = alpha_.RowData(t),
-      *next_beta = beta_.RowData((t + 1) % 2);
-  BaseFloat *this_beta_dash = beta_.RowData(t % 2);
+
+  const BaseFloat *this_alpha_dash = alpha_.RowData(t);
+  const BaseFloat *      next_beta = beta_.RowData((t+1) % 2);
+  BaseFloat *       this_beta_dash = beta_.RowData( t    % 2);
   const Int32Pair *forward_transitions = den_graph_.ForwardTransitions();
   const DenominatorGraphTransition *transitions = den_graph_.Transitions();
   // 'probs' is the matrix of pseudo-likelihoods for frame t.
   CuSubMatrix<BaseFloat> probs(exp_nnet_output_transposed_, 0, num_pdfs,
-                               t * num_sequences_, num_sequences_),
-      log_prob_deriv(nnet_output_deriv_transposed_, 0, num_pdfs,
+                               t * num_sequences_, num_sequences_);
+  CuSubMatrix<BaseFloat> log_prob_deriv(nnet_output_deriv_transposed_, 0, num_pdfs,
                      t_wrapped * num_sequences_, num_sequences_);
 
-  int32 num_hmm_states = den_graph_.NumStates(),
-      num_sequences = num_sequences_;
+  int32 num_hmm_states = den_graph_.NumStates();
+  int32 num_sequences = num_sequences_;
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -395,7 +401,7 @@ void DenominatorComputation::BetaDashGeneralFrame(int32 t) {
         // the call again.
         forward_transitions += dimGrid.y;
         this_alpha_dash += dimGrid.y * num_sequences;
-        this_beta_dash += dimGrid.y * num_sequences;
+        this_beta_dash  += dimGrid.y * num_sequences;
         num_hmm_states -= dimGrid.y;
         dimGrid.y = num_hmm_states;
       }
@@ -404,28 +410,29 @@ void DenominatorComputation::BetaDashGeneralFrame(int32 t) {
   } else
 #endif
   {
-    int32 prob_stride = probs.Stride(),
-         deriv_stride = log_prob_deriv.Stride();
+    int32  prob_stride = probs.Stride();
+    int32 deriv_stride = log_prob_deriv.Stride();
     const BaseFloat *prob_data = probs.Data();
     BaseFloat *log_prob_deriv_data = log_prob_deriv.Data();
     for (int32 h = 0; h < num_hmm_states; h++) {
       for (int32 s = 0; s < num_sequences; s++) {
-        BaseFloat this_alpha_dash_prob = this_alpha_dash[h * num_sequences + s],
-            inv_arbitrary_scale =
-            this_alpha_dash[num_hmm_states * num_sequences + s];
-        double tot_variable_factor = 0.0;
-        BaseFloat occupation_factor = this_alpha_dash_prob /
-            inv_arbitrary_scale;
+        BaseFloat this_alpha_dash_prob = this_alpha_dash[h * num_sequences + s];
+        BaseFloat inv_arbitrary_scale  = this_alpha_dash[num_hmm_states * num_sequences + s];
+
+        double  tot_variable_factor = 0.0;
+        BaseFloat occupation_factor = this_alpha_dash_prob / inv_arbitrary_scale;
+
         const DenominatorGraphTransition
             *trans_iter = transitions + forward_transitions[h].first,
-            *trans_end = transitions + forward_transitions[h].second;
+            *trans_end  = transitions + forward_transitions[h].second;
+
         for (; trans_iter != trans_end; ++trans_iter) {
           BaseFloat transition_prob = trans_iter->transition_prob;
-          int32 pdf_id = trans_iter->pdf_id,
-              next_hmm_state = trans_iter->hmm_state;
-          BaseFloat variable_factor = transition_prob *
-              next_beta[next_hmm_state * num_sequences + s] *
-              prob_data[pdf_id * prob_stride + s];
+          int32         pdf_id = trans_iter->pdf_id;
+          int32 next_hmm_state = trans_iter->hmm_state;
+          
+          BaseFloat variable_factor = transition_prob * next_beta[next_hmm_state * num_sequences + s] * prob_data[pdf_id * prob_stride + s];
+
           tot_variable_factor += variable_factor;
           BaseFloat occupation_prob = variable_factor * occupation_factor;
           log_prob_deriv_data[pdf_id * deriv_stride + s] += occupation_prob;
@@ -440,13 +447,16 @@ void DenominatorComputation::BetaDashGeneralFrame(int32 t) {
 void DenominatorComputation::BetaGeneralFrameDebug(int32 t) {
   BaseFloat num_hmm_states = den_graph_.NumStates(),
       alpha_beta_size = num_hmm_states * num_sequences_;
-  CuSubVector<BaseFloat> this_alpha_dash(alpha_.RowData(t), alpha_beta_size),
-      this_beta_dash(beta_.RowData(t % 2), alpha_beta_size);
+  CuSubVector<BaseFloat> this_alpha_dash(alpha_.RowData(t), alpha_beta_size);
+  CuSubVector<BaseFloat>  this_beta_dash(beta_.RowData(t % 2), alpha_beta_size);
+
   int32 t_wrapped = t % static_cast<int32>(kMaxDerivTimeSteps),
       num_pdfs = exp_nnet_output_transposed_.NumRows();
+
   CuSubMatrix<BaseFloat> this_log_prob_deriv(
       nnet_output_deriv_transposed_, 0, num_pdfs,
       t_wrapped * num_sequences_, num_sequences_);
+      
   BaseFloat alpha_beta_product = VecVec(this_alpha_dash,
                                         this_beta_dash),
       this_log_prob_deriv_sum = this_log_prob_deriv.Sum();
