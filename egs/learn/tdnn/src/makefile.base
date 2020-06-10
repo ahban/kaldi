@@ -1,0 +1,379 @@
+###############################################################################
+# note: this is copied from Ban's non-working-time work
+# Copyright : Ban Zhihua all rights reserved
+###############################################################################
+
+# set c++ and c compiler
+CPP_VERSION = $(shell g++ --version | grep -E '^g\+\+' | grep -o '4\.8\.5' | \
+			  head -1 | sed "s/ //g")
+ifneq ("$(strip $(CPP_VERSION))", "4.8.5")
+CPP := g++-4.8
+else
+CPP := g++
+endif
+
+CC_VERSION = $(shell gcc --version | grep -E '^gcc' | grep -o '4\.8\.5' | \
+			  head -1 | sed "s/ //g")
+ifneq ("$(strip $(CC_VERSION))", "4.8.5")
+CC := gcc-4.8
+else
+CC := gcc
+endif
+
+ifeq ("$(strip $(ENABLE_CUDA))", "")
+ENABLE_CUDA := no
+endif
+
+
+ifeq ("$(strip $(ENABLE_CUDA))", "yes")
+NVCC_VERSION := $(shell nvcc --version | grep -Eo "release ?[0-9]+\.[0-9]+" | \
+			   grep -Eo "[0-9]+\.[0-9]")
+
+CUDA_CC_FLAGS := -DWITH_CUDA `pkg-config --cflags \
+	cudart-$(NVCC_VERSION) \
+	cublas-$(NVCC_VERSION) \
+	cusparse-$(NVCC_VERSION) \
+	cusolver-$(NVCC_VERSION) \
+	curand-$(NVCC_VERSION)`
+
+CUDA_LD_FLAGS := -DWITH_CUDA `pkg-config --libs  \
+	cudart-$(NVCC_VERSION) \
+	cublas-$(NVCC_VERSION) \
+	cusparse-$(NVCC_VERSION) \
+	cusolver-$(NVCC_VERSION) \
+	curand-$(NVCC_VERSION)`
+
+NV_CFLAGS += -gencode arch=compute_61,code=sm_61
+NV_CFLAGS += -gencode arch=compute_50,code=sm_50
+
+NVCC := nvcc -std=c++11 -ccbin "$(CPP)"
+
+endif
+
+
+ifeq ("$(strip $(ENABLE_MPI))", "yes")
+CPP=mpic++ -DWITH_MPI
+CC=mpicc -DWITH_MPI
+EXE_PRE=mpirun -n 3
+endif
+
+CPP := $(CPP) -std=c++11
+CC  := $(CC)  -std=c11
+LD  := $(CPP)
+AR  := ar
+
+
+
+###############################################################################
+# debug or release flags
+
+DEBUG_CPP_FLAGS   += $(CPP_FLAGS)
+DEBUG_C_FLAGS     += $(C_FLAGS)
+DEBUG_CU_FLAGS    += $(CU_FLAGS)
+
+RELEASE_CPP_FLAGS += $(CPP_FLAGS)
+RELEASE_C_FLAGS   += $(C_FLAGS)
+RELEASE_CU_FLAGS  += $(CU_FLAGS)
+
+LD_R_FLAGS        += $(LD_FLAGS)
+LD_D_FLAGS        += $(LD_FLAGS)
+
+
+# rdynamic
+# debug cpp flags
+DEBUG_CPP_FLAGS   += -rdynamic
+DEBUG_C_FLAGS     += -rdynamic
+DEBUG_CU_FLAGS    += -Xcompiler="-rdynamic"
+#
+# release cpp
+RELEASE_CPP_FLAGS += -rdynamic
+RELEASE_C_FLAGS   += -rdynamic
+RELEASE_CU_FLAGS  += -Xcompiler="-rdynamic"
+
+LD_R_FLAGS        += -rdynamic
+LD_D_FLAGS        += -rdynamic
+
+
+
+# pthreads
+ifeq ("$(strip $(ENABLE_PTHREADS))", "yes")
+# debug cpp flags
+DEBUG_CPP_FLAGS   += -pthread
+DEBUG_C_FLAGS     += -pthread
+DEBUG_CU_FLAGS    += -Xcompiler="-pthread"
+#
+# release cpp
+RELEASE_CPP_FLAGS += -pthread
+RELEASE_C_FLAGS   += -pthread
+RELEASE_CU_FLAGS  += -Xcompiler="-pthread"
+
+LD_R_FLAGS        += -pthread
+LD_D_FLAGS        += -pthread
+endif
+
+
+ifeq ("$(strip $(ENABLE_OPENMP))", "yes")
+# debug cpp flags
+DEBUG_CPP_FLAGS   += -fopenmp
+DEBUG_C_FLAGS     += -fopenmp
+DEBUG_CU_FLAGS    += -Xcompiler="-fopenmp"
+#
+# release cpp
+RELEASE_CPP_FLAGS += -fopenmp
+RELEASE_C_FLAGS   += -fopenmp
+RELEASE_CU_FLAGS  += -Xcompiler="-fopenmp"
+
+LD_R_FLAGS        += -fopenmp
+LD_D_FLAGS        += -fopenmp
+endif
+
+
+ifneq ("$(strip $(MKL_PC_STEM))", "")
+# debug cpp flags
+DEBUG_CPP_FLAGS   += -DWITH_MKL `pkg-config --cflags $(MKL_PC_STEM)`
+DEBUG_C_FLAGS     += -DWITH_MKL `pkg-config --cflags $(MKL_PC_STEM)`
+DEBUG_CU_FLAGS    += -DWITH_MKL `pkg-config --cflags $(MKL_PC_STEM)`
+#
+# release cpp
+RELEASE_CPP_FLAGS += -DWITH_MKL `pkg-config --cflags $(MKL_PC_STEM)`
+RELEASE_C_FLAGS   += -DWITH_MKL `pkg-config --cflags $(MKL_PC_STEM)`
+RELEASE_CU_FLAGS  += -DWITH_MKL `pkg-config --cflags $(MKL_PC_STEM)`
+
+LD_R_FLAGS        += -DWITH_MKL `pkg-config --libs $(MKL_PC_STEM)`
+LD_D_FLAGS        += -DWITH_MKL `pkg-config --libs $(MKL_PC_STEM)`
+endif
+
+
+
+# debug cpp flags
+DEBUG_CPP_FLAGS   += -g -ggdb -D_DEBUG -Wall $(CUDA_CC_FLAGS)
+DEBUG_C_FLAGS     += -g -ggdb -D_DEBUG -Wall $(CUDA_CC_FLAGS)
+DEBUG_CU_FLAGS    += -g -G    -D_DEBUG $(NV_CFLAGS) $(CUDA_CC_FLAGS)
+#
+# release cpp
+RELEASE_CPP_FLAGS += -Wall -O3 -Wuninitialized $(CUDA_CC_FLAGS)
+RELEASE_C_FLAGS   += -Wall -O3 -Wuninitialized $(CUDA_CC_FLAGS)
+RELEASE_CU_FLAGS  += -O3 $(NV_CFLAGS) $(CUDA_CC_FLAGS)
+
+LD_R_FLAGS        += $(CUDA_LD_FLAGS)
+LD_D_FLAGS        += $(CUDA_LD_FLAGS)
+
+
+
+
+
+
+###############################################################################
+# objects from source
+
+CPP_R_OBJS = $(filter %.o, $(SRCS:.cpp=.cpp.r.o))
+CPP_D_OBJS = $(filter %.o, $(SRCS:.cpp=.cpp.d.o))
+CPP_R_OBJS += $(filter %.o, $(SRCS:.cc=.cc.r.o))
+CPP_D_OBJS += $(filter %.o, $(SRCS:.cc=.cc.d.o))
+
+CC_R_OBJS  = $(filter %.o, $(SRCS:.c=.c.r.o))
+CC_D_OBJS  = $(filter %.o, $(SRCS:.c=.c.d.o))
+
+CU_R_OBJS  = $(filter %.o, $(SRCS:.cu=.cu.r.o))
+CU_D_OBJS  = $(filter %.o, $(SRCS:.cu=.cu.d.o))
+
+ifeq ("$(strip $(ENABLE_CUDA))", "no")
+ifneq ("$(strip $(CU_R_OBJS))", "")
+$(error ENABLE_CUDA=no, but you are compiling \
+	cuda sources: $(filter %.cu, $(SRCS)))
+endif
+endif
+
+R_OBJS := $(CPP_R_OBJS) $(CC_R_OBJS) $(CU_R_OBJS)
+D_OBJS := $(CPP_D_OBJS) $(CC_D_OBJS) $(CU_D_OBJS)
+
+ifeq ("$(strip $(TARGET))", "")
+$(error "empty target")
+endif
+
+# exe release and debug
+ER_TARGET = $(filter %.exe, $(TARGET:.exe=.r.exe))
+ED_TARGET = $(filter %.exe, $(TARGET:.exe=.d.exe))
+# so release and debug
+SR_TARGET = $(filter %.so, $(TARGET:.so=.r.so))
+SD_TARGET = $(filter %.so, $(TARGET:.so=.d.so))
+# a release and debug
+AR_TARGET = $(filter %.a, $(TARGET:.a=.r.a))
+AD_TARGET = $(filter %.a, $(TARGET:.a=.d.a))
+
+ifneq ("$(strip $(ER_TARGET))", "")
+ifneq ("$(strip $(SR_TARGET) $(AR_TARGET))", "")
+$(error TARGET="$(TARGET)" must be only one content)
+endif
+endif
+
+ifneq ("$(strip $(AR_TARGET))", "")
+ifneq ("$(strip $(ER_TARGET) $(SR_TARGET))", "")
+$(error TARGET="$(TARGET)" must be only one content)
+endif
+endif
+
+ifneq ("$(strip $(SR_TARGET))", "")
+ifneq ("$(strip $(ER_TARGET) $(AR_TARGET))", "")
+$(error TARGET="$(TARGET)" must be only one content)
+endif
+DEBUG_CPP_FLAGS   += -fPIC
+DEBUG_C_FLAGS     += -fPIC
+DEBUG_CU_FLAGS    += -Xcompiler="-fPIC"
+RELEASE_CPP_FLAGS += -fPIC
+RELEASE_C_FLAGS   += -fPIC
+RELEASE_CU_FLAGS  += -Xcompiler="-fPIC"
+LD_R_FLAGS        += -fPIC
+LD_D_FLAGS        += -fPIC
+endif
+
+
+all: debug release
+	@echo "done"
+
+rrun: release
+	${EXE_PRE} ./${ER_TARGET}
+
+drun: debug
+	${EXE_PRE} ./${ED_TARGET}
+
+dval: debug
+	valgrind ./$(ED_TARGET)
+
+rval: release
+	valgrind ./$(ER_TARGET)
+
+rnvprof: release
+	nvprof --print-gpu-trace ./$(ER_TARGET)
+
+dnvprof: debug
+	nvprof --print-gpu-trace ./$(ED_TARGET)
+
+debug: $(ED_TARGET) $(SD_TARGET) $(AD_TARGET)
+	@echo "compiling debug done"
+
+release:  $(ER_TARGET) $(SR_TARGET) $(AR_TARGET)
+	@echo "compiling release done"
+
+.PHONY: clean cleaninter
+
+clean: cleaninter
+	rm -rf $(ER_TARGET) $(AR_TARGET) $(SR_TARGET)
+	rm -rf $(ED_TARGET) $(AD_TARGET) $(SD_TARGET)
+
+cleaninter:
+	rm -rf $(R_OBJS)
+	rm -rf $(D_OBJS)
+
+
+###############################################################################
+# exe lib...so lib...a
+
+ifneq ("$(strip $(ER_TARGET))", "")
+$(ER_TARGET): $(R_OBJS)
+	$(LD) $(R_OBJS) $(LD_R_FLAGS) -o $@
+endif
+
+ifneq ("$(strip $(ED_TARGET))", "")
+$(ED_TARGET): $(D_OBJS)
+	$(LD) $(D_OBJS) $(LD_D_FLAGS) -o $@
+endif
+
+
+ifneq ("$(strip $(SR_TARGET))", "")
+$(SR_TARGET): $(R_OBJS)
+	$(LD) -shared $(R_OBJS) $(LD_R_FLAGS) -o $@
+endif
+
+ifneq ("$(strip $(SD_TARGET))", "")
+$(SD_TARGET): $(D_OBJS)
+	$(LD) -shared $(D_OBJS) $(LD_D_FLAGS) -o $@
+endif
+
+
+ifneq ("$(strip $(AR_TARGET))", "")
+$(AR_TARGET): $(R_OBJS)
+	$(AR) -crs $@ $(R_OBJS)
+endif
+
+ifneq ("$(strip $(AD_TARGET))", "")
+$(AD_TARGET): $(D_OBJS)
+	$(AR) -crs $@ $(D_OBJS)
+endif
+
+
+###############################################################################
+# c, c++, cuda rules
+
+
+%.c.r.o: %.c
+	$(CC) -c $(RELEASE_C_FLAGS) $(ALL_COMPILE_FLAGS) $< -o $@
+
+%.c.d.o: %.c
+	$(CC) -c $(DEBUG_C_FLAGS)   $(ALL_COMPILE_FLAGS) $< -o $@
+
+
+%.cpp.r.o: %.cpp
+	$(CPP) -c $(RELEASE_CPP_FLAGS) $(ALL_COMPILE_FLAGS) $< -o $@
+
+%.cpp.d.o: %.cpp
+	$(CPP) -c $(DEBUG_CPP_FLAGS)   $(ALL_COMPILE_FLAGS) $< -o $@
+
+%.cc.r.o: %.cc
+	$(CPP) -c $(RELEASE_CPP_FLAGS) $(ALL_COMPILE_FLAGS) $< -o $@
+
+%.cc.d.o: %.cc
+	$(CPP) -c $(DEBUG_CPP_FLAGS)   $(ALL_COMPILE_FLAGS) $< -o $@
+
+
+%.cu.r.o: %.cu
+	$(NVCC) -c $(RELEASE_CU_FLAGS) $(ALL_COMPILE_FLAGS) $< -o $@
+
+%.cu.d.o: %.cu
+	$(NVCC) -c $(DEBUG_CU_FLAGS)   $(ALL_COMPILE_FLAGS) $< -o $@
+
+
+###############################################################################
+# ref
+
+# Generate dependency files during compilation
+# see also: http://make.paulandlesley.org/autodep.html
+#    2005-01-25 Steffen Kamp (kamp@ient.rwth-aachen.de), RWTH Aachen
+#define COMPILE_AND_DEPEND_RELEASE
+#        $(CC) -c -MMD -MF $*.c.r.d -MT $*.c.r.o \
+#			$(CPPFLAGS) $(RELEASE_CPP_FLAGS) -o $@ $(CURDIR)/$<
+#        @cp $*.c.r.d $*.c.r.P; \
+#                sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+#                -e '/^$$/ d' -e 's/$$/ :/' < $*.c.r.d >> $*.c.r.P; \
+#                rm -f $*.c.r.d
+#endef
+#
+#define COMPILE_AND_DEPEND_DEBUG
+#        $(CC) -c -MMD -MF $*.c.d.d -MT $*.c.d.o \
+#			$(CPPFLAGS) $(DEBUG_CPP_FLAGS) -o $@ $(CURDIR)/$<
+#        @cp $*.c.d.d $*.c.d.P; \
+#			sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+#			-e '/^$$/ d' -e 's/$$/ :/' < $*.c.d.d >> $*.c.d.P; \
+#			rm -f $*.c.d.d
+#endef
+#
+#%.c.r.o: %.c
+#	$(CC) -c $(RELEASE_C_FLAGS) $(ALL_COMPILE_FLAGS) $(CURDIR)/$< -o $@
+#
+#%.c.d.o: %.c
+#	$(CC) -c $(DEBUG_C_FLAGS)   $(ALL_COMPILE_FLAGS) $(CURDIR)/$< -o $@
+#
+#
+#%.cpp.r.o: %.cpp
+#	$(CPP) -c $(RELEASE_CPP_FLAGS) $(ALL_COMPILE_FLAGS) $(CURDIR)/$< -o $@
+#
+#%.cpp.d.o: %.cpp
+#	$(CPP) -c $(DEBUG_CPP_FLAGS)   $(ALL_COMPILE_FLAGS) $(CURDIR)/$< -o $@
+#
+#
+#%.cu.r.o: %.cu
+#	$(NVCC) -c $(RELEASE_CU_FLAGS) $(ALL_COMPILE_FLAGS) $(CURDIR)/$< -o $@
+#
+#%.cu.d.o: %.cu
+#	$(NVCC) -c $(DEBUG_CU_FLAGS)   $(ALL_COMPILE_FLAGS) $(CURDIR)/$< -o $@
+
