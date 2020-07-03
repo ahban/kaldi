@@ -312,7 +312,7 @@ bool DenominatorComputation::Backward(
     if (t % kMaxDerivTimeSteps == 0) {
       // commit the derivative stored in nnet_output_deriv_transposed_ by adding
       // its transpose to the appropriate sub-matrix of 'nnet_output_deriv'.
-      int32 chunk_frames = std::min<int32>(static_cast<int32>(kMaxDerivTimeSteps), frames_per_sequence_ - t),
+      int32 chunk_frames = std::min<int32>(static_cast<int32>(kMaxDerivTimeSteps), frames_per_sequence_ - t);
       int32     num_pdfs = exp_nnet_output_transposed_.NumRows();
 
       CuSubMatrix<BaseFloat> transposed_deriv_part(
