@@ -52,6 +52,9 @@ int Rand(struct RandomState* state) {
   } else {
     std::lock_guard<std::mutex> lock(_RandMutex);
     return rand();
+    //auto ans = rand();
+    //printf("==%d %d\n", __LINE__, ans);
+    //return ans;
   }
 #endif
 }
