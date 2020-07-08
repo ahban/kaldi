@@ -17,5 +17,24 @@ int main(){
         kaldi::Input ki(filename, &binary_in);
         net.Read(ki.Stream(), binary_in);
     }
+
+    bool binary = 1;
+    for (int c = 0; c < net.NumComponents(); c++){
+        if ("tdnn1.affine" == net.GetComponentName(c)){
+            kaldi::Output osf("aff.txt", binary);
+            auto &os = osf.Stream();
+            net.GetComponent(c)->Write(os, binary);
+        }
+        if ("lda" == net.GetComponentName(c)){
+            kaldi::Output osf("lda.txt", binary);
+            auto &os = osf.Stream();
+            net.GetComponent(c)->Write(os, binary);
+        }
+        if ("tdnn1.renorm" == net.GetComponentName(c)){
+            kaldi::Output osf("renorm.txt", binary);
+            auto &os = osf.Stream();
+            net.GetComponent(c)->Write(os, binary);
+        }
+    }
     return 0;
 }
