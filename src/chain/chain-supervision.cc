@@ -740,12 +740,13 @@ void MergeSupervisionE2e(const std::vector<const Supervision*> &input,
 void MergeSupervision(const std::vector<const Supervision*> &input,
                       Supervision *output_supervision) {
   KALDI_ASSERT(!input.empty());
-  int32 label_dim = input[0]->label_dim,
-      num_inputs = input.size();
+  int32 label_dim = input[0]->label_dim;
+  int32 num_inputs = input.size();
   if (num_inputs == 1) {
     *output_supervision = *(input[0]);
     return;
   }
+
   if (!input[0]->e2e_fsts.empty()) {
     MergeSupervisionE2e(input, output_supervision);
     return;
@@ -770,7 +771,6 @@ void MergeSupervision(const std::vector<const Supervision*> &input,
     } else {
       KALDI_ERR << "Mismatch weight or frames_per_sequence  between inputs";
     }
-
   }
   fst::StdVectorFst &out_fst = output_supervision->fst;
   // The process of concatenation will have introduced epsilons.

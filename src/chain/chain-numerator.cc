@@ -72,6 +72,7 @@ void NumeratorComputation::ComputeLookupIndexes() {
       index_map_this_frame.clear();
       cur_time = t;
     }
+    // ban : fst read
     for (fst::ArcIterator<fst::StdVectorFst> aiter(supervision_.fst, state);
          !aiter.Done(); aiter.Next()) {
       int32 pdf_id = aiter.Value().ilabel - 1;
@@ -179,11 +180,9 @@ void NumeratorComputation::Backward(
       BaseFloat transition_logprob = -arc.weight.Value();
       int32 index = *this_fst_output_indexes_iter;
       BaseFloat pseudo_loglike = nnet_logprob_data[index];
-      this_log_beta = LogAdd(this_log_beta, pseudo_loglike +
-                             transition_logprob + next_log_beta);
-      BaseFloat occupation_logprob = this_log_alpha + pseudo_loglike +
-          transition_logprob + next_log_beta - tot_log_prob,
-          occupation_prob = exp(occupation_logprob);
+      this_log_beta = LogAdd(this_log_beta, pseudo_loglike + transition_logprob + next_log_beta);
+      BaseFloat occupation_logprob = this_log_alpha + pseudo_loglike + transition_logprob + next_log_beta - tot_log_prob;
+      BaseFloat occupation_prob    = exp(occupation_logprob);
       nnet_logprob_deriv_data[index] += occupation_prob;
     }
     // check for -inf.

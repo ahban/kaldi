@@ -232,6 +232,7 @@ void ModifyChainExampleContext(int32 left_context,
                              &min_output_t, &max_output_t))
     KALDI_ERR << "Too late to perform frame selection/context reduction on "
               << "these examples (already merged?)";
+
   if (left_context != -1) {
     int32 observed_left_context = min_output_t - min_input_t;
     if (!warned_left && observed_left_context < left_context) {
@@ -244,6 +245,7 @@ void ModifyChainExampleContext(int32 left_context,
     }
     min_input_t = std::max(min_input_t, min_output_t - left_context);
   }
+
   if (right_context != -1) {
     int32 observed_right_context = max_input_t - max_output_t;
 
@@ -351,13 +353,15 @@ int main(int argc, char *argv[]) {
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
       const std::string &key = example_reader.Key();
       NnetChainExample &eg = example_reader.Value();
-      if (frame_subsampling_factor == -1)
+      if (frame_subsampling_factor == -1){
+        // banban : may be 3 for chain model training
         CalculateFrameSubsamplingFactor(eg,
                                         &frame_subsampling_factor);
+      }
       // count is normally 1; could be 0, or possibly >1.
-      int32 count = GetCount(keep_proportion);
+      int32 count = GetCount(keep_proportion); // banban, very interesting parameter
 
-      if (!eg_weight_rspecifier.empty()) {
+      if (!eg_weight_rspecifier.empty()) { // banban weight specific examples
         BaseFloat weight = 1.0;
         if (!egs_weight_reader.HasKey(key)) {
           KALDI_WARN << "No weight for example key " << key;
@@ -378,11 +382,16 @@ int main(int argc, char *argv[]) {
         RenameOutputs(new_output_name, &eg);
       }
       
-      if (frame_shift != 0)
+      if (frame_shift != 0){
+        // banban add frame_shift on feature time
         ShiftChainExampleTimes(frame_shift, exclude_names, &eg);
-      if (left_context != -1 || right_context != -1)
+      }
+        
+      // banban, i do not why you remove addition feature context
+      if (left_context != -1 || right_context != -1){
         ModifyChainExampleContext(left_context, right_context,
                                   frame_subsampling_factor, &eg);
+      }
         
       for (int32 c = 0; c < count; c++) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
