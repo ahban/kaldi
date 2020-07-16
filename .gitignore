@@ -1,4 +1,9 @@
 *.dot
+*.raw
+*.bin
+*.wav
+*.tar.gz
+**/yesno/s5/waves_yesno/README
 
 # Created by https://www.gitignore.io/api/visualstudiocode
 # Edit at https://www.gitignore.io/?templates=visualstudiocode

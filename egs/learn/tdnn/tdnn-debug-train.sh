@@ -8,15 +8,20 @@
 
 mb_egs=./trash/debug.mb.chain.egs
 
-if [ ! -f $mb_egs ]; then
-    nnet3-chain-copy-egs \
-        --frame-shift=0 \
-        ark:/home/aban/devel/aban-kaldi/egs/learn/tdnn/exp/tri8b/egs/cegs.2.ark ark:- |\
-        nnet3-chain-shuffle-egs --buffer-size=5000 --srand=1 ark:- ark:- |\
-        nnet3-chain-merge-egs --minibatch-size=128,64 ark:- ark:$mb_egs 
-fi
+#if [ ! -f $mb_egs ]; then
+#    nnet3-chain-copy-egs \
+#        --frame-shift=0 \
+#        ark:/home/aban/devel/aban-kaldi/egs/learn/tdnn/exp/tri8b/egs/cegs.2.ark ark:- |\
+#        nnet3-chain-shuffle-egs --buffer-size=5000 --srand=1 ark:- ark:- |\
+#        nnet3-chain-merge-egs --minibatch-size=128,64 ark:- ark:$mb_egs 
+#fi
 
-./build/nnet3-chain-train.d.exe \
+
+nnet3-chain-subset-egs --randomize-order=false --n=5 ark:./exp/tri8b/egs/cegs.1.ark ark:- |\
+    nnet3-chain-merge-egs --minibatch-size=4 ark:- ark:$mb_egs 
+
+./src/nnet3-chain-train.d.exe \
+    --computation.debug=true \
     --use-gpu=yes \
     --apply-deriv-weights=False \
     --l2-regularize=0.0 \
@@ -34,4 +39,4 @@ fi
     /home/aban/devel/aban-kaldi/egs/learn/tdnn/exp/tri8b/30.mdl \
     /home/aban/devel/aban-kaldi/egs/learn/tdnn/exp/tri8b/den.fst \
     ark:$mb_egs \
-    ./trash/output.raw
+    ./trash/output.raw 2> chain-train-debug-1.txt
