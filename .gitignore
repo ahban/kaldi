@@ -1,4 +1,5 @@
 *.dot
+*.mat
 *.raw
 *.bin
 *.wav
