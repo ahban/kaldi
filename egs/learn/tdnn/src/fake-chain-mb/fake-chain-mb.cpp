@@ -27,6 +27,8 @@ int main(int argc, char** argv){
     std::string use_gpu = "yes";
     NnetChainTrainingOptions opts;
 
+    opts.chain_config.xent_regularize = 0.5;
+    opts.nnet_config.compute_config.debug = true;
 
     ParseOptions po(usage);
     po.Register("srand", &srand_seed, "Seed for random number generator ");
@@ -47,7 +49,7 @@ int main(int argc, char** argv){
     fst::StdVectorFst den_fst;
     ReadFstKaldi(den_fst_rxfilename, &den_fst);
 
-    string nnet_rxfilename = "../../tdnn-models/0.raw";
+    string nnet_rxfilename = "../../tdnn-models/2.raw";
     Nnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
 
@@ -61,10 +63,6 @@ int main(int argc, char** argv){
     for (; !example_reader.Done(); example_reader.Next()){
         auto &eg = example_reader.Value();
         for (auto &input : eg.inputs){
-            //for (auto &i : input.indexes){
-            //    i.Write(cout, false);
-            //    cout << endl;
-            //}
             kaldi::Matrix<kaldi::BaseFloat> feats;
             input.features.GetMatrix(&feats);
             int min_val = std::numeric_limits<int>::max();
@@ -81,6 +79,14 @@ int main(int argc, char** argv){
             }
             input.features = feats;
         }
+
+        for (auto &output : eg.outputs){
+            for (auto &o : output.indexes){
+                o.t += 2;
+            }
+        }
+
+
         trainer.Train(eg);
 
         example_writer.Write("heihei", eg);

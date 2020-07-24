@@ -222,7 +222,7 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
 
     const CuMatrixBase<BaseFloat> &nnet_output = computer->GetOutput(sup.name);
     {
-        kaldi::Output osf("hhahah.txt", false);
+        kaldi::Output osf("output.txt", false);
         nnet_output.Write(osf.Stream(), false);
     }
 
@@ -247,6 +247,10 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
       // this block computes the cross-entropy objective.
       const CuMatrixBase<BaseFloat> &xent_output = computer->GetOutput(
           xent_name);
+      {
+          kaldi::Output osf("xent-output.txt", false);
+          xent_output.Write(osf.Stream(), false);
+      }
       // at this point, xent_deriv is posteriors derived from the numerator
       // computation.  note, xent_objf has a factor of '.supervision.weight'
       BaseFloat xent_objf = TraceMatMat(xent_output, xent_deriv, kTrans);
