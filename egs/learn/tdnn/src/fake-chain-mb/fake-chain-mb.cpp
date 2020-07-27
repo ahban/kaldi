@@ -28,7 +28,7 @@ int main(int argc, char** argv){
     NnetChainTrainingOptions opts;
 
     opts.chain_config.xent_regularize = 0.5;
-    opts.nnet_config.compute_config.debug = true;
+    opts.nnet_config.compute_config.debug = false;
 
     ParseOptions po(usage);
     po.Register("srand", &srand_seed, "Seed for random number generator ");
@@ -49,7 +49,9 @@ int main(int argc, char** argv){
     fst::StdVectorFst den_fst;
     ReadFstKaldi(den_fst_rxfilename, &den_fst);
 
-    string nnet_rxfilename = "../../tdnn-models/2.raw";
+    //string nnet_rxfilename = "../../tdnn-models/2.raw";
+    //string nnet_rxfilename = "../../tdnn-models/3.raw";
+    string nnet_rxfilename = "../../tdnn-models/4.raw";
     Nnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
 
@@ -60,6 +62,7 @@ int main(int argc, char** argv){
     string examples_wspecifier = "ark,t:../../trash/fake.debug.mb.chain.egs";
     kaldi::nnet3::SequentialNnetChainExampleReader example_reader(examples_rspecifier);
     kaldi::nnet3::NnetChainExampleWriter example_writer(examples_wspecifier);
+    srand(0);
     for (; !example_reader.Done(); example_reader.Next()){
         auto &eg = example_reader.Value();
         for (auto &input : eg.inputs){
@@ -86,7 +89,7 @@ int main(int argc, char** argv){
             }
         }
 
-
+        cout << rand() << endl;
         trainer.Train(eg);
 
         example_writer.Write("heihei", eg);

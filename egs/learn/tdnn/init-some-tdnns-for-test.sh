@@ -8,7 +8,7 @@
 
 . path.sh
 
-for f in tdnn-models/{0..2}.sh; do
+for f in tdnn-models/{0..4}.sh; do
     if [ -f $f ]; then
         $f 
     fi

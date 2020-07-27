@@ -109,6 +109,11 @@ void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
   computer.AcceptInputs(*nnet_, eg.inputs);
   computer.Run();
 
+  {
+      kaldi::WriteKaldiObject(*nnet_, "nnet.store.stats.txt", false);
+
+  }
+
   this->ProcessOutputs(false, eg, &computer);
   computer.Run();
 
@@ -153,6 +158,7 @@ void NnetChainTrainer::TrainInternalBackstitch(const NnetChainExample &eg,
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.inputs);
   computer.Run();
+
 
   bool is_backstitch_step2 = !is_backstitch_step1;
   this->ProcessOutputs(is_backstitch_step2, eg, &computer);
@@ -222,8 +228,8 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
 
     const CuMatrixBase<BaseFloat> &nnet_output = computer->GetOutput(sup.name);
     {
-        kaldi::Output osf("output.txt", false);
-        nnet_output.Write(osf.Stream(), false);
+        kaldi::Output osf("output.txt", true);
+        nnet_output.Write(osf.Stream(), true);
     }
 
 
@@ -248,8 +254,8 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
       const CuMatrixBase<BaseFloat> &xent_output = computer->GetOutput(
           xent_name);
       {
-          kaldi::Output osf("xent-output.txt", false);
-          xent_output.Write(osf.Stream(), false);
+          kaldi::Output osf("xent-output.txt", true);
+          xent_output.Write(osf.Stream(),      true);
       }
       // at this point, xent_deriv is posteriors derived from the numerator
       // computation.  note, xent_objf has a factor of '.supervision.weight'

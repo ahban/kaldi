@@ -18,9 +18,9 @@ SRCS := \
 	$(filter-out %-test.cc, $(wildcard ${HOME}/devel/aban-kaldi/src/tree/*.cc)) \
 	$(filter-out %-test.cc, $(wildcard ${HOME}/devel/aban-kaldi/src/chain/*.cc)) \
 	$(filter-out %-test.cc, $(wildcard ${HOME}/devel/aban-kaldi/src/chain/*.cu)) \
-	$(filter-out %-test.cc %nnet-chain-training.cc, $(wildcard ${HOME}/devel/aban-kaldi/src/nnet3/*.cc)) \
+	$(filter-out %-test.cc %nnet-chain-training.cc %nnet-compute.cc, $(wildcard ${HOME}/devel/aban-kaldi/src/nnet3/*.cc)) \
 	$(filter-out %-test.cc, $(wildcard ${HOME}/devel/aban-kaldi/src/decoder/*.cc)) \
-	./nnet-chain-training.cc \
+	./nnet-chain-training.cc ./nnet-compute.cc \
 	$(TARGET:.exe=.cpp)
 
 	#${HOME}/devel/aban-kaldi/src/chainbin/nnet3-chain-train.cc
