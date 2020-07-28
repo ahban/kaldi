@@ -24,6 +24,17 @@
 namespace kaldi {
 namespace nnet3 {
 
+BaseFloat Norm(const CuMatrixBase<BaseFloat> &a){
+    return std::sqrt(kaldi::TraceMatMat(a,a,kaldi::kTrans));
+}
+
+std::string Info(const CuMatrixBase<BaseFloat> &A){
+    std::ostringstream ostr;
+    ostr << "rows="<<A.NumRows() 
+        << " cols=" << A.NumCols()
+        << " step=" << A.Stride() << " data=" << A.Data();
+    return ostr.str();
+}
 
 NnetComputer::NnetComputer(const NnetComputeOptions &options,
                            const NnetComputation &computation,
@@ -242,13 +253,17 @@ void NnetComputer::ExecuteCommand() {
         const CuSubMatrix<BaseFloat> input(GetSubMatrix(c.arg3));
         CuSubMatrix<BaseFloat> output(GetSubMatrix(c.arg4));
 
-        bool debug = true; 
+        bool debug = false; 
+        std::string component_name = nnet_.GetComponentName(c.arg1);
+        //std::cout << component_name << std::endl;
+        if (0)
         {
             std::ostringstream ostr;
             ostr << "pre-x-" << nnet_.GetComponentName(c.arg1) << ".txt";
             kaldi::WriteKaldiObject(input, ostr.str(), debug);
         }
 
+        if (0)
         {
             std::ostringstream ostr;
             ostr << "pre-y-" << nnet_.GetComponentName(c.arg1) << ".txt";
@@ -256,17 +271,20 @@ void NnetComputer::ExecuteCommand() {
         }
         void *memo = component->Propagate(indexes, input, &output);
 
+        if (0)
         {
             std::ostringstream ostr;
             ostr << "after-x-" << nnet_.GetComponentName(c.arg1) << ".txt";
             kaldi::WriteKaldiObject(input, ostr.str(), debug);
         }
 
+        if (0)
         {
             std::ostringstream ostr;
             ostr << "after-y-" << nnet_.GetComponentName(c.arg1) << ".txt";
             kaldi::WriteKaldiObject(output, ostr.str(), debug);
         }
+
         if (c.arg6) {  // need to store stats.
           KALDI_ASSERT(nnet_to_store_stats_ != NULL);
           Component *stats_component = nnet_to_store_stats_->GetComponent(c.arg1);
@@ -310,10 +328,34 @@ void NnetComputer::ExecuteCommand() {
         const CuSubMatrix<BaseFloat> out_deriv(GetSubMatrix(c.arg5));
         CuSubMatrix<BaseFloat> in_deriv(GetSubMatrix(c.arg6));
         void *memo = GetMemo(c.arg7);
+
+
+        bool debug = false; 
+        std::string component_name = nnet_.GetComponentName(c.arg1);
+        std::cout << component_name << std::endl;
+
+        std::cout << "   x=" << Info(in_value) << "\n";
+        std::cout << "   y=" << Info(out_value) << "\n";
+        std::cout << "  dy=" << Info(out_deriv) << "\n";
+        if (c.arg6!=0){
+            std::cout << "  dx=" << Info(in_deriv) << "\n";
+        }
+
+        std::cout << "   x=" << Norm(in_value) << "\n";
+        std::cout << "   y=" << Norm(out_value) << "\n";
+        std::cout << "  dy=" << Norm(out_deriv) << "\n";
+
         component->Backprop(debug_str.str(), indexes,
                             in_value, out_value, out_deriv,
                             memo, upd_component,
                             c.arg6 == 0 ? NULL : &in_deriv);
+        std::cout << "============================\n";
+        if (c.arg6!=0){
+            
+            std::cout << "  dx=" << Norm(out_deriv) << "\n";
+        }
+
+
         if (memo != NULL)
           component->DeleteMemo(memo);
         break;

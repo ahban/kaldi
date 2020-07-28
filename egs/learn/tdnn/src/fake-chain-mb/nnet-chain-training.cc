@@ -272,7 +272,10 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
       if (use_xent)
         xent_deriv.MulRowsVec(cu_deriv_weights);
     }
-
+    if (1) //////////////////////////
+    {
+        nnet_output_deriv.SetZero();
+    }
     computer->AcceptInput(sup.name, &nnet_output_deriv);
 
     objf_info_[sup.name + suffix].UpdateStats(sup.name + suffix,
@@ -280,6 +283,10 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
                                      num_minibatches_processed_,
                                      tot_weight, tot_objf, tot_l2_term);
 
+    if (1) //////////////////////////
+    {
+        xent_deriv.SetZero();
+    }
     if (use_xent) {
       xent_deriv.Scale(opts_.chain_config.xent_regularize);
       computer->AcceptInput(xent_name, &xent_deriv);

@@ -3,7 +3,7 @@
   > author       : Ban Zhihua
   > contact      : sawpara@126.com
   > created time : Thu 23 Jul 2020 03:53:27 PM CST
-******************************************************************************/
+ ******************************************************************************/
 #include <iostream>
 #include <string>
 using namespace std;
@@ -18,9 +18,37 @@ using namespace kaldi;
 using namespace kaldi::nnet3;
 using namespace kaldi::chain;
 
+void print(const kaldi::CuVector<float> &a){
+    a.Write(cout, false);
+}
+
+void print(const kaldi::CuMatrix<float> &a){
+    a.Write(cout, false);
+}
+
+void print(const kaldi::Vector<float> &a){
+    a.Write(cout, false);
+}
+
+void print(const kaldi::Matrix<float> &a){
+    a.Write(cout, false);
+}
+
+void print(const kaldi::VectorBase<float> &a){
+    a.Write(cout, false);
+}
+void print(const kaldi::MatrixBase<float> &a){
+    a.Write(cout, false);
+}
+
+
+void print(const kaldi::CuMatrixBase<float> &a){
+    a.Write(cout, false);
+}
+
 int main(int argc, char** argv){
 
-        const char *usage ="usage";
+    const char *usage ="usage";
 
     int32 srand_seed = 0;
     bool binary_write = true;
@@ -44,6 +72,9 @@ int main(int argc, char** argv){
 
     po.Read(argc, argv);
 
+    #if HAVE_CUDA==1
+    CuDevice::Instantiate().SelectGpuId(use_gpu);
+    #endif
 
     string den_fst_rxfilename = "../../exp/tri8b/den.fst";
     fst::StdVectorFst den_fst;
