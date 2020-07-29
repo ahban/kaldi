@@ -14,7 +14,9 @@ fi
 
 model=$1
 
-./steps/nnet3/nnet3_to_dot.sh --component-attributes \
-    "name,type,input-dim,output-dim" $model ${model}.dot ${model}.pdf
+./steps/nnet3/nnet3_to_dot.sh \
+    --info-bin nnet3-info \
+    --component-attributes "name,type,input-dim,output-dim" \
+    $model ${model}.dot ${model}.pdf
 scp $model.pdf sun:~/
 

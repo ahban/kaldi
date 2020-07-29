@@ -255,7 +255,7 @@ void NnetComputer::ExecuteCommand() {
 
         bool debug = false; 
         std::string component_name = nnet_.GetComponentName(c.arg1);
-        //std::cout << component_name << std::endl;
+        std::cout << component_name << std::endl;
         if (0)
         {
             std::ostringstream ostr;
@@ -270,6 +270,8 @@ void NnetComputer::ExecuteCommand() {
             kaldi::WriteKaldiObject(output, ostr.str(), debug);
         }
         void *memo = component->Propagate(indexes, input, &output);
+        std::cout << "  x="  << Norm(input) << std::endl;
+        std::cout << "  y="  << Norm(output) << std::endl;
 
         if (0)
         {
@@ -329,6 +331,7 @@ void NnetComputer::ExecuteCommand() {
         CuSubMatrix<BaseFloat> in_deriv(GetSubMatrix(c.arg6));
         void *memo = GetMemo(c.arg7);
 
+        std::cout << "\n";
 
         bool debug = false; 
         std::string component_name = nnet_.GetComponentName(c.arg1);
@@ -344,6 +347,9 @@ void NnetComputer::ExecuteCommand() {
         std::cout << "   x=" << Norm(in_value) << "\n";
         std::cout << "   y=" << Norm(out_value) << "\n";
         std::cout << "  dy=" << Norm(out_deriv) << "\n";
+        if (c.arg6!=0){
+            std::cout << "  dx=" << Norm(in_deriv) << "\n";
+        }
 
         component->Backprop(debug_str.str(), indexes,
                             in_value, out_value, out_deriv,
@@ -351,9 +357,16 @@ void NnetComputer::ExecuteCommand() {
                             c.arg6 == 0 ? NULL : &in_deriv);
         std::cout << "============================\n";
         if (c.arg6!=0){
-            
-            std::cout << "  dx=" << Norm(out_deriv) << "\n";
+            std::cout << "  dx=" << Norm(in_deriv) << "\n";
+            {
+                bool binary = false;
+                std::ostringstream ostr;
+                ostr << "dx."<< component_name << ".txt";
+                kaldi::Output osf(ostr.str(), binary);
+                in_deriv.Write(osf.Stream(), binary);
+            }
         }
+        std::cout << "\n";
 
 
         if (memo != NULL)

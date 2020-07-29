@@ -111,8 +111,8 @@ void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
 
   {
       kaldi::WriteKaldiObject(*nnet_, "nnet.store.stats.txt", false);
-
   }
+  std::cout << "\n---------------------------------------\n";
 
   this->ProcessOutputs(false, eg, &computer);
   computer.Run();
@@ -272,9 +272,12 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
       if (use_xent)
         xent_deriv.MulRowsVec(cu_deriv_weights);
     }
+    bool rbinary;
+    kaldi::Input isf("/home/aban/devel/ca/src/nn-tests/ca-diffs.txt", &rbinary);
     if (1) //////////////////////////
     {
-        nnet_output_deriv.SetZero();
+        //nnet_output_deriv.SetZero();
+        nnet_output_deriv.Read(isf.Stream(), rbinary);
     }
     computer->AcceptInput(sup.name, &nnet_output_deriv);
 
@@ -283,12 +286,13 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
                                      num_minibatches_processed_,
                                      tot_weight, tot_objf, tot_l2_term);
 
-    if (1) //////////////////////////
-    {
-        xent_deriv.SetZero();
-    }
     if (use_xent) {
       xent_deriv.Scale(opts_.chain_config.xent_regularize);
+      if (1) //////////////////////////
+      {
+          //xent_deriv.SetZero();
+          xent_deriv.Read(isf.Stream(), rbinary);
+      }
       computer->AcceptInput(xent_name, &xent_deriv);
     }
   }
