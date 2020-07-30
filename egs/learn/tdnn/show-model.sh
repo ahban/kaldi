@@ -18,5 +18,8 @@ model=$1
     --info-bin nnet3-info \
     --component-attributes "name,type,input-dim,output-dim" \
     $model ${model}.dot ${model}.pdf
-scp $model.pdf sun:~/
+scp $model.pdf sun:~/24-3/
+
+evince $model.pdf
+
 
