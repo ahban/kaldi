@@ -84,10 +84,10 @@ int main(int argc, char** argv){
     //string nnet_rxfilename = "../../models/1.raw";
     //string nnet_rxfilename = "../../models/2.raw";
     //string nnet_rxfilename = "../../models/3.raw";
-    //string nnet_rxfilename = "../../models/4.raw";
+    string nnet_rxfilename = "../../models/4.raw";
     //string nnet_rxfilename = "../../models/5.raw";
     //string nnet_rxfilename = "../../models/6.raw";
-    string nnet_rxfilename = "../../models/7.raw";
+    //string nnet_rxfilename = "../../models/7.raw";
     Nnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
 
