@@ -60,10 +60,10 @@ int main(int argc, char *argv[]) {
     CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
 
-    //std::string nnet_rxfilename     = "../../models/8.raw";
+    std::string nnet_rxfilename     = "../../models/8.raw";
     //std::string nnet_rxfilename     = "../../models/9.raw";
     //std::string nnet_rxfilename     = "../../models/10.raw";
-    std::string nnet_rxfilename     = "../../models/11.raw";
+    //std::string nnet_rxfilename     = "../../models/11.raw";
     std::string examples_rspecifier = "ark:../../trash/ce.mb.txt";
     std::string nnet_wxfilename     = "./write-net.raw";
 
