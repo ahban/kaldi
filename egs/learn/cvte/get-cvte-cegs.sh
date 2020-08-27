@@ -16,6 +16,7 @@ stage=-1
 cvte_data=/home/data/aban/data/1w/data
 data_dir=${cvte_data}/train_10000
 ali_dir=${cvte_data}/../tune/3L-Smbr-gcmvn/alis
+num_leaves=8000 # number of pdf, keywords may need a smaller number <- aban
 
 
 # outputs
@@ -58,10 +59,11 @@ if [ $stage -le 3 ]; then
         echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
         exit 1;
     fi
+
     local/chain/build_tree.sh \
         --frame-subsampling-factor 3 \
         --context-opts "--context-width=2 --central-position=1" \
-        --cmd "$train_cmd" 1000 ${data_dir} \
+        --cmd "$train_cmd" $num_leaves ${data_dir} \
         $lang $ali_dir $tree_dir
 fi
 
