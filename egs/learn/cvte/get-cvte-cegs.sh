@@ -9,24 +9,29 @@
 # modify from local/chain/run_tdnn.sh 
 
 . path.sh || exit 1;
+. cmd.sh || exit 1;
 
 stage=-1
 
 # inputs
-cvte_data=/home/data/aban/data/1w/data
-data_dir=${cvte_data}/train_10000
-ali_dir=${cvte_data}/../tune/3L-Smbr-gcmvn/alis
+# cvte_data=/home/data/aban/data/1w/data
+# data_dir=${cvte_data}/train_10000
+# ali_dir=${cvte_data}/../tune/3L-Smbr-gcmvn/alis
+# num_leaves=8000 # number of pdf, keywords may need a smaller number <- aban
+
+cvte_data=./data
+data_dir=${cvte_data}/fbank/train
+ali_dir=./exp/wer-HalfR-LabelDelay_ali
 num_leaves=8000 # number of pdf, keywords may need a smaller number <- aban
 
 
 # outputs
 lang=data/lang_chain
-tree_dir=./exp/3L-Smbr-gcmvn-tree
+tree_dir=./exp/wer-HalfR-LabelDelay_tree
 
 if [ $stage -le 12 ]; then
-    
     echo "$0: creating lang directory $lang with chain-type topology"
-    printf "$0: note that L.fst (phones to words) used here is for asr not keywords\n\n"
+    printf "$0: aban note that L.fst (phones to words) used here is for asr not keywords\n\n"
     # Create a version of the lang/ directory that has one state per phone in the
     # topo file. [note, it really has two states.. the first one is only repeated
     # once, the second one has zero or more repeats.]
@@ -55,14 +60,15 @@ if [ $stage -le 3 ]; then
     # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
     # those.  The num-leaves is always somewhat less than the num-leaves from
     # the GMM baseline.
-    if [ -f $tree_dir/final.mdl ]; then
-        echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
-        exit 1;
-    fi
+    #if [ -f $tree_dir/final.mdl ]; then
+        #echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
+        #exit 1;
+    #fi
 
-    local/chain/build_tree.sh \
+    local/chain/build-tree.sh \
         --frame-subsampling-factor 3 \
         --context-opts "--context-width=2 --central-position=1" \
+        --global-cmvn-mat $global_cmvn_mat \
         --cmd "$train_cmd" $num_leaves ${data_dir} \
         $lang $ali_dir $tree_dir
 fi

@@ -34,6 +34,8 @@ leftmost_questions_truncate=-1  # note: this option is deprecated and has no eff
 tree_stats_opts=
 cluster_phones_opts=
 repeat_frames=false
+
+global_cmvn_mat=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -74,9 +76,13 @@ lang=$3
 alidir=$4
 dir=$5
 
-for f in $data/feats.scp $lang/phones.txt $alidir/final.mdl $alidir/ali.1; do
+for f in $data/feats.scp $lang/phones.txt $alidir/final.mdl $alidir/ali.1.gz; do
   [ ! -f $f ] && echo "train_sat.sh: no such file $f" && exit 1;
 done
+
+[ -z $global_cmvn_mat ] && { \
+    echo $0 global_cmvn_mat should be specified; exit 1; \
+}
 
 oov=`cat $lang/oov.int`
 nj=`cat $alidir/num_jobs` || exit 1;
@@ -108,20 +114,26 @@ fi
 if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "$0: feature type is $feat_type"
 
-## Set up speaker-independent features.
-case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-    cp $alidir/final.mat $dir
-    cp $alidir/full.mat $dir 2>/dev/null
-    ;;
-  *) echo "$0: invalid feature type $feat_type" && exit 1;
-esac
+##  ## Set up speaker-independent features.
+##  case $feat_type in
+##    delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
+##    lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
+##      cp $alidir/final.mat $dir
+##      cp $alidir/full.mat $dir 2>/dev/null
+##      ;;
+##    *) echo "$0: invalid feature type $feat_type" && exit 1;
+##  esac
+##  
+##  # Add fMLLR transforms if available
+##  if [ -f $alidir/trans.1 ]; then
+##    echo "$0: Using transforms from $alidir"
+##    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
+##  fi
 
-# Add fMLLR transforms if available
-if [ -f $alidir/trans.1 ]; then
-  echo "$0: Using transforms from $alidir"
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
+if [ "$feat_type" != "delta" ]; then
+    echo $0: feature $feat_type is not supported by aban && exit 1;
+else
+    feats="ark,s,cs:apply-cmvn-online $cmvn_opts "
 fi
 
 # Do subsampling of feats, if needed
@@ -150,27 +162,29 @@ if [ $stage -le -5 ]; then
       $dir/mono.mdl $dir/mono.tree || exit 1;
 fi
 
+
 if [ $stage -le -4 ]; then
   # Get tree stats.
   echo "$0: Accumulating tree stats"
 
-  # $cmd JOB=1:$nj $dir/log/acc_tree.JOB.log \
-  #    convert-ali --frame-subsampling-factor=$alignment_subsampling_factor \
-  #        $alidir/final.mdl $dir/mono.mdl $dir/mono.tree "ark:gunzip -c $alidir/ali.JOB.gz|" ark:-  \| \
-  #     acc-tree-stats $context_opts $tree_stats_opts --ci-phones=$ciphonelist $dir/mono.mdl \
-  #       "$feats" ark:- $dir/JOB.treeacc || exit 1;
-
   $cmd JOB=1:$nj $dir/log/acc_tree.JOB.log \
       convert-ali --frame-subsampling-factor=$alignment_subsampling_factor \
-      $alidir/final.mdl $dir/mono.mdl $dir/mono.tree "$alidir/ali.JOB" ark:-  \| \
+      $alidir/final.mdl $dir/mono.mdl $dir/mono.tree "ark:gunzip -c $alidir/ali.JOB.gz|" ark:-  \| \
       acc-tree-stats $context_opts $tree_stats_opts --ci-phones=$ciphonelist $dir/mono.mdl \
       "$feats" ark:- $dir/JOB.treeacc || exit 1;
+
+  #$cmd JOB=1:$nj $dir/log/acc_tree.JOB.log \
+  #    convert-ali --frame-subsampling-factor=$alignment_subsampling_factor \
+  #    $alidir/final.mdl $dir/mono.mdl $dir/mono.tree "$alidir/ali.JOB" ark:-  \| \
+  #    acc-tree-stats $context_opts $tree_stats_opts --ci-phones=$ciphonelist $dir/mono.mdl \
+  #    "$feats" ark:- $dir/JOB.treeacc || exit 1;
 
   [ "`ls $dir/*.treeacc | wc -w`" -ne "$nj" ] && echo "$0: Wrong #tree-accs" && exit 1;
   $cmd $dir/log/sum_tree_acc.log \
     sum-tree-stats $dir/treeacc $dir/*.treeacc || exit 1;
   rm $dir/*.treeacc
 fi
+
 
 if [ $stage -le -3 ] && $train_tree; then
   echo "$0: Getting questions for tree clustering."
