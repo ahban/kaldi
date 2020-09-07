@@ -6,6 +6,6 @@
 # created time : Thu 03 Sep 2020 06:39:10 PM CST
 ###############################################################################
 
-. pash.sh || { echo "failed to source path.sh"; exit 1; }
+. path.sh || { echo "failed to source path.sh"; exit 1; }
 
 compute-cmvn-stats scp:data/mfcc/train/feats.scp global.ark
