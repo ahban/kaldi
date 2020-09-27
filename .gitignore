@@ -1,4 +1,6 @@
+machines
 *.dot
+*.log
 *.ark
 *.mat
 *.raw

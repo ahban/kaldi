@@ -290,18 +290,33 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         "--scale={1} {2}/{3}.mdl - |".format(
                             learning_rate, shrinkage_value, dir, iter))
 
-    if do_average:
-        cur_num_chunk_per_minibatch_str = num_chunk_per_minibatch_str
-        cur_max_param_change = max_param_change
-    else:
-        # on iteration zero, use a smaller minibatch size (and we will later
-        # choose the output of just one of the jobs): the model-averaging isn't
-        # always helpful when the model is changing too fast (i.e. it can worsen
-        # the objective function), and the smaller minibatch size will help to
-        # keep the update stable.
-        cur_num_chunk_per_minibatch_str = common_train_lib.halve_minibatch_size_str(
-            num_chunk_per_minibatch_str)
-        cur_max_param_change = float(max_param_change) / math.sqrt(2)
+    ##### aban
+    logger.warning("comment the followint two lines and uncomment the lines "
+            "that commented by ban when use kaldi only.\n"
+            )
+    logger.warning("comment the followint two lines and uncomment the lines "
+            "that commented by ban when use kaldi only.\n"
+            )
+    logger.warning("comment the followint two lines and uncomment the lines "
+            "that commented by ban when use kaldi only.\n"
+            )
+    logger.warning("comment the followint two lines and uncomment the lines "
+            "that commented by ban when use kaldi only.\n"
+            )
+    cur_num_chunk_per_minibatch_str = num_chunk_per_minibatch_str
+    cur_max_param_change = max_param_change
+    #if do_average:
+    #    cur_num_chunk_per_minibatch_str = num_chunk_per_minibatch_str
+    #    cur_max_param_change = max_param_change
+    #else:
+    #    # on iteration zero, use a smaller minibatch size (and we will later
+    #    # choose the output of just one of the jobs): the model-averaging isn't
+    #    # always helpful when the model is changing too fast (i.e. it can worsen
+    #    # the objective function), and the smaller minibatch size will help to
+    #    # keep the update stable.
+    #    cur_num_chunk_per_minibatch_str = common_train_lib.halve_minibatch_size_str(
+    #        num_chunk_per_minibatch_str)
+    #    cur_max_param_change = float(max_param_change) / math.sqrt(2)
 
     raw_model_string = raw_model_string + dropout_edit_string
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,

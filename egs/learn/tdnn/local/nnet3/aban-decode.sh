@@ -18,7 +18,6 @@ max_active=7000
 min_active=200
 ivector_scale=1.0
 lattice_beam=8.0 # Beam we use in lattice generation.
-iter=final
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
 use_gpu=false # If true, will use a GPU, with nnet3-latgen-faster-batch.
               # In that case it is recommended to set num-threads to a large
@@ -53,7 +52,6 @@ if [ $# -ne 3 ]; then
   echo "  --nj <nj>                                # number of parallel jobs"
   echo "  --cmd <cmd>                              # Command to run in parallel with"
   echo "  --beam <beam>                            # Decoding beam; default 15.0"
-  echo "  --iter <iter>                            # Iteration of model to decode; default is final."
   echo "  --scoring-opts <string>                  # options to local/score.sh"
   echo "  --num-threads <n>                        # number of threads to use, default 1."
   echo "  --use-gpu <true|false>                   # default: false.  If true, we recommend"
@@ -149,8 +147,7 @@ fi
 
 if [ $stage -le 2 ]; then
   if ! $skip_diagnostics ; then
-    [ ! -z $iter ] && iter_opt="--iter $iter"
-    steps/diagnostic/analyze_lats.sh --cmd "$cmd" $iter_opt $graphdir $dir
+    local/diagnostic/analyze_lats.sh --cmd "$cmd" --model $model $graphdir $dir
   fi
 fi
 
@@ -162,7 +159,7 @@ if [ $stage -le 3 ]; then
     [ ! -x local/score.sh ] && \
       echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
     echo "score best paths"
-    [ "$iter" != "final" ] && iter_opt="--iter $iter"
+    #[ "$iter" != "final" ] && iter_opt="--iter $iter"
     local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir
     echo "score confidence and timing with sclite"
   fi

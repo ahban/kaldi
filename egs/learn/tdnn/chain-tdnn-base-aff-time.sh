@@ -6,20 +6,22 @@
 # created time : Fri 06 Mar 2020 04:45:56 PM CST
 ###############################################################################
 
+# counting time
+
 . path.sh
 . cmd.sh
 
 export CUDA_VISIBLE_DEVICES=0,1
 
-stage=4
-num_debug=100
+stage=5
+#num_debug=100
 
-egs_org=./exp/tri8b/egs/cegs.1.ark
-egs_new=./trash/cegs.debug.ark
+#egs_org=./exp/tri8b/egs/cegs.1.ark
+#egs_new=./trash/cegs.debug.ark
 
-if [ $stage -le 1 ]; then
-    nnet3-chain-subset-egs --n=$num_debug ark:$egs_org ark:$egs_new
-fi
+#if [ $stage -le 1 ]; then
+    #nnet3-chain-subset-egs --n=$num_debug ark:$egs_org ark:$egs_new
+#fi
 
 
 srand=0
@@ -30,7 +32,7 @@ remove_egs=false
 data_dir=data/mfcc/train
 tree_dir=exp/tri7b_tree
 lat_dir=exp/tri7b_lats
-dir=exp/tri8b_tdnn_base
+dir=exp/tri8b_tdnn_base_aff
 
 
 if [ $stage -le 4 ]; then
@@ -74,9 +76,11 @@ EOF
     steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
+sed -i 's|NaturalGradient||g' $dir/configs/final.config 
+
 
 if [ $stage -le 5 ]; then
-    steps/nnet3/chain/train.py --stage=-10 \
+    time steps/nnet3/chain/train.py --stage=0 \
         --cmd="$decode_cmd" \
         --feat.online-ivector-dir=$train_ivector_dir \
         --feat.cmvn-opts="--norm-means=true --norm-vars=true" \

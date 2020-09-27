@@ -15,7 +15,7 @@ beam=6
 word_ins_penalty=0.0,0.5,1.0
 min_lmwt=7
 max_lmwt=17
-iter=final
+#iter=final
 #end configuration section.
 
 echo "$0 $@"  # Print the command line for logging

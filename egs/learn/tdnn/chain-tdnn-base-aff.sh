@@ -9,7 +9,9 @@
 . path.sh
 . cmd.sh
 
-stage=4
+export CUDA_VISIBLE_DEVICES=0,1
+
+stage=5
 #num_debug=100
 
 #egs_org=./exp/tri8b/egs/cegs.1.ark
@@ -30,6 +32,8 @@ tree_dir=exp/tri7b_tree
 lat_dir=exp/tri7b_lats
 dir=exp/tri8b_tdnn_base_aff
 
+log_sub_dir=log-same-minibatch-size
+log_sub_dir=log-same-minibatch-size-smaller-lr
 
 if [ $stage -le 4 ]; then
     echo "$0: creating neural net configs using the xconfig parser";
@@ -76,7 +80,12 @@ sed -i 's|NaturalGradient||g' $dir/configs/final.config
 
 
 if [ $stage -le 5 ]; then
-    steps/nnet3/chain/train.py --stage=-10 \
+
+    mkdir -p $dir/$log_sub_dir
+    rm $dir/log || { echo "faile to remove a linkage, is it a real linkage?"; exit 1; }
+    ln -s $log_sub_dir $dir/log
+
+    steps/nnet3/chain/train.py --stage=0 \
         --cmd="$decode_cmd" \
         --feat.online-ivector-dir=$train_ivector_dir \
         --feat.cmvn-opts="--norm-means=true --norm-vars=true" \
@@ -92,8 +101,8 @@ if [ $stage -le 5 ]; then
         --trainer.frames-per-iter=2000000 \
         --trainer.optimization.num-jobs-initial=2 \
         --trainer.optimization.num-jobs-final=2 \
-        --trainer.optimization.initial-effective-lrate=0.0005 \
-        --trainer.optimization.final-effective-lrate=0.00005 \
+        --trainer.optimization.initial-effective-lrate=0.0001 \
+        --trainer.optimization.final-effective-lrate=0.00001 \
         --trainer.num-chunk-per-minibatch=128,64,32 \
         --trainer.optimization.momentum=0.0 \
         --egs.chunk-width=$chunk_width \
@@ -128,3 +137,5 @@ steps/nnet3/decode.sh \
     --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
     --online-ivector-dir "" \
     $tree_dir/graph data/mfcc/test ${dir}/decode_lang || exit 1
+
+cat $dir/decode_lang/scoring_kaldi/best_wer
